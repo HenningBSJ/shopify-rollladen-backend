@@ -82,6 +82,10 @@
         "padding_bottom": 12
       }
     },
+    "roller-customizer": {
+      "type": "roller-customizer",
+      "settings": {}
+    },
     "related-products": {
       "type": "related-products",
       "settings": {
@@ -103,6 +107,7 @@
   },
   "order": [
     "main",
+    "roller-customizer",
     "related-products"
   ]
 }
