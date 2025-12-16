@@ -1,0 +1,54 @@
+{%- comment -%}
+Zeigt nur: Titel, Material, Profil, Farbe, Maße, Preise
+Robust gegen Namen wie "Profilhoehe", "Abmessung (mm) …-Breite/Höhe"
+{%- endcomment -%}
+
+{%- assign props = item.properties -%}
+
+{%- comment %} Material {% endcomment -%}
+{%- assign material = props['Material'] 
+  | default: props['Materialauswahl'] 
+  | default: props['Material-Auswahl'] %}
+
+{%- comment %} Profil {% endcomment -%}
+{%- assign profil = props['Profil'] 
+  | default: props['Profilhöhe'] 
+  | default: props['Profilhoehe']
+  | default: props['Profil-Höhe'] %}
+
+{%- comment %} Farbe: erstes Property mit "farb" im Key {% endcomment -%}
+{%- assign farbe = '' -%}
+{%- for p in props -%}
+  {%- assign k = p.first | downcase -%}
+  {%- if k contains 'farb' and farbe == '' -%}
+    {%- assign farbe = p.last -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- comment %} Breite/Höhe (mm) aus beliebigen Keys {% endcomment -%}
+{%- assign w_raw = '' -%}{%- assign h_raw = '' -%}
+{%- for p in props -%}
+  {%- assign k = p.first | downcase -%}
+  {%- if w_raw == '' and k contains 'breite' -%}{%- assign w_raw = p.last -%}{%- endif -%}
+  {%- if h_raw == '' and k contains 'höhe' or k contains 'hoehe' -%}{%- assign h_raw = p.last -%}{%- endif -%}
+{%- endfor -%}
+
+{%- assign w = w_raw | replace: ' mm','' | replace:'mm','' | strip | plus: 0 -%}
+{%- assign h = h_raw | replace: ' mm','' | replace:'mm','' | strip | plus: 0 -%}
+
+{%- assign unit_price = item.final_line_price | divided_by: item.quantity -%}
+
+<div class="ci">
+  <div class="ci-title">{{ item.product.title }}</div>
+  <ul class="ci-spec">
+    {%- if material != blank -%}<li><span>Material:</span> {{ material }}</li>{%- endif -%}
+    {%- if profil   != blank -%}<li><span>Profil:</span> {{ profil }}</li>{%- endif -%}
+    {%- if farbe    != blank -%}<li><span>Farbe:</span> {{ farbe }}</li>{%- endif -%}
+    {%- if w > 0 and h > 0 -%}<li><span>Maße:</span> {{ w }} × {{ h }} mm</li>{%- endif -%}
+  </ul>
+  <div class="ci-price">
+    <span>Preis je Satz: {{ unit_price | money }}</span>
+    <span>× {{ item.quantity }}</span>
+    <span class="ci-line">= {{ item.final_line_price | money }}</span>
+  </div>
+</div>

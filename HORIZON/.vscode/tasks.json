@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Shopify: Dev",  "type": "shell", "command": "shopify theme dev" },
+    { "label": "Shopify: Pull", "type": "shell", "command": "shopify theme pull --theme ${input:themeId}" },
+    { "label": "Shopify: Push", "type": "shell", "command": "shopify theme push --theme ${input:themeId} --allow-live" }
+  ],
+  "inputs": [
+    { "id": "themeId", "type": "promptString", "description": "Theme ID (z. B. 186404045175)" }
+  ]
+}

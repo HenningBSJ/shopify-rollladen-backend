@@ -1,0 +1,5 @@
+checks:
+  CaptureOnContentForBlock:
+    enabled: false
+  ValidSchemaName:
+    enabled: false

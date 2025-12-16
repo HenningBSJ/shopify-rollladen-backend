@@ -1,0 +1,13 @@
+{
+  "files.eol": "\n",
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "shopifyLiquid.checkOnSave": false,
+  "shopifyLiquid.formatLiquid": true,
+
+  // Genie AI
+  "genieai.openaiModel": "gpt-5",
+  "genieai.showSidebarOnStartup": true,
+  "genieai.maximumTokens": 4096,
+  "genieai.temperature": 0.2
+}

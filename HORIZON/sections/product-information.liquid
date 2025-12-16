@@ -1,0 +1,654 @@
+
+
+{% liquid
+  if section.settings.desktop_media_position == 'left'
+    assign render_order = 'media,product-details'
+  else
+    assign render_order = 'product-details,media'
+  endif
+
+  assign product_has_media = true
+  if closest.product.media.size == 0
+    assign product_has_media = false
+  endif
+
+  assign product_grid_class = 'product-information__grid'
+
+  if product_has_media == false
+    assign product_grid_class = product_grid_class | append: ' product-information--media-none'
+  elsif section.settings.desktop_media_position == 'right'
+    assign product_grid_class = product_grid_class | append: ' product-information--media-right'
+  else
+    assign product_grid_class = product_grid_class | append: ' product-information--media-left'
+  endif
+
+  if section.settings.equal_columns
+    assign product_grid_class = product_grid_class | append: ' product-information__grid--half'
+
+    if section.settings.limit_details_width
+      assign product_grid_class = product_grid_class | append: ' product-information__grid--limit-details'
+    endif
+  endif
+
+  case section.settings.content_width
+    when 'content-center-aligned'
+      assign content_width = 'page-width'
+    when 'content-full-width'
+      assign content_width = 'full-width'
+  endcase
+%}
+
+<script type="application/ld+json">
+  {{ closest.product | structured_data }}
+</script>
+
+<div class="section-background color-{{ section.settings.color_scheme }}"></div>
+<div
+  class="product-information section section--{{ content_width }} spacing-style color-{{ section.settings.color_scheme }} relative"
+  style="{% render 'spacing-style', settings: section.settings %} --gap: {{ section.settings.gap }}px;"
+>
+  {% if section.settings.desktop_media_position == 'left' and product_has_media %}
+    {% assign product_href = '#ProductInformation-' | append: section.id %}
+    {% render 'skip-to-content-link', href: product_href, text: 'accessibility.skip_to_product_info' %}
+  {% endif %}
+  <div
+    class="{{ product_grid_class }}"
+    data-product-grid-content
+  >
+    {% assign render_order_array = render_order | split: ',' %}
+    {% capture media %}
+      <div
+        class="product-information__media"
+        data-testid="product-information-media"
+      >
+        {%- content_for 'block',
+          type: '_product-media-gallery',
+          id: 'media-gallery',
+          closest.product: closest.product
+        -%}
+      </div>
+    {% endcapture %}
+
+    {% capture details %}
+      {% content_for 'block',
+        type: '_product-details',
+        id: 'product-details',
+        closest.product: closest.product
+      %}
+    {% endcapture %}
+
+    {% for block in render_order_array %}
+      {% if block == 'media' and product_has_media %}
+        {{ media }}
+      {% elsif block == 'product-details' %}
+        {{ details }}
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% content_for 'blocks' %}
+</div>
+
+<!-- v2: Easify Product Options Bridge -->
+<script src="{{ 'easify-fetch-fallback.js' | asset_url }}" defer></script>
+<script src="{{ 'easify-options-hook.js' | asset_url }}" defer></script>
+<script src="{{ 'easify-advanced-debugger.js' | asset_url }}" defer></script>
+
+{% stylesheet %}
+  .product-information {
+    gap: var(--gap) 0;
+  }
+
+  /* Base grid layout */
+  .product-information__grid {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+
+  /* Default column positions */
+  .product-details {
+    order: 1;
+  }
+
+  .product-information__media {
+    order: 0;
+    width: 0;
+    min-width: 100%;
+  }
+
+  /* Mobile styles */
+  @media screen and (max-width: 749px) {
+    .product-information__media {
+      grid-column: 1 / -1;
+    }
+
+    .product-details {
+      grid-column: 2 / 3;
+    }
+  }
+
+  /* Desktop styles */
+  @media screen and (min-width: 750px) {
+    .product-information__grid {
+      grid-column: 2;
+    }
+
+    /* Position when there is no media */
+    .product-information__grid.product-information--media-none,
+    .product-information__grid:has(.product-information__media:empty) {
+      .product-details {
+        width: var(--narrow-content-width);
+        margin: 0 auto;
+      }
+    }
+
+    /* Position when there is media */
+    .product-information__grid:not(:has(.product-information__media:empty)) {
+      /* Media on the left side */
+      &.product-information--media-left {
+        grid-template-columns: 1fr min(50vw, var(--sidebar-width));
+
+        .product-information__media {
+          padding-right: calc(var(--gap, 0) / 2);
+        }
+
+        .product-details {
+          padding-left: calc(var(--gap, 0) / 2);
+        }
+
+        &:has(.media-gallery--extend) {
+          grid-column: 1 / 3;
+        }
+      }
+
+      /* Media on the right side */
+      &.product-information--media-right {
+        grid-template-columns: min(50vw, var(--sidebar-width)) 1fr;
+
+        .product-information__media {
+          padding-left: calc(var(--gap, 0) / 2);
+          order: 1;
+        }
+
+        .product-details {
+          padding-right: calc(var(--gap, 0) / 2);
+          order: 0;
+        }
+
+        &:has(.media-gallery--extend) {
+          grid-column: 2 / -1;
+        }
+      }
+
+      /* Equal width columns */
+      &.product-information__grid--half,
+      &.product-information__grid--half:has(.media-gallery--extend) {
+        grid-column: 1 / -1;
+        grid-template-columns:
+          var(--full-page-grid-margin) calc(var(--full-page-grid-central-column-width) / 2) calc(
+            var(--full-page-grid-central-column-width) / 2
+          )
+          var(--full-page-grid-margin);
+
+        &.product-information--media-left {
+          .product-information__media {
+            grid-column: 2 / 3;
+
+            &:has(.media-gallery--extend) {
+              grid-column: 1 / 3;
+            }
+          }
+
+          .product-details {
+            grid-column: 3 / 4;
+          }
+        }
+
+        &.product-information--media-right {
+          .product-information__media {
+            grid-column: 3 / 4;
+
+            &:has(.media-gallery--extend) {
+              grid-column: 3 / -1;
+            }
+          }
+
+          .product-details {
+            grid-column: 2 / 3;
+          }
+        }
+      }
+    }
+
+    /* Handle full width section */
+    .section--full-width {
+      .product-information__grid:not(:has(.product-information__media:empty)),
+      .product-information__grid:not(:has(.product-information__media:empty)) {
+        &.product-information--media-left,
+        &.product-information--media-right {
+          grid-column: 1 / -1;
+        }
+
+        &.product-information--media-left .product-details {
+          padding-inline-end: var(--padding-lg);
+        }
+
+        &.product-information--media-right .product-details {
+          padding-inline-start: var(--padding-lg);
+        }
+
+        &.product-information__grid--half.product-information--media-left {
+          .product-information__media {
+            grid-column: 1 / 3;
+          }
+
+          .product-details {
+            grid-column: 3 / -1;
+          }
+        }
+
+        &.product-information__grid--half.product-information--media-right {
+          .product-information__media {
+            grid-column: 3 / -1;
+          }
+
+          .product-details {
+            grid-column: 1 / 3;
+          }
+        }
+      }
+    }
+  }
+
+  /* Wider sidebar for large screens */
+  @media screen and (min-width: 1200px) {
+    .product-information__grid:not(
+        .product-information__grid--half,
+        :has(.product-information__media:empty)
+      ).product-information--media-left {
+      grid-template-columns: 2fr 1fr;
+    }
+
+    .product-information__grid:not(
+        .product-information__grid--half,
+        :has(.product-information__media:empty)
+      ).product-information--media-right {
+      grid-template-columns: 1fr 2fr;
+    }
+  }
+
+  .product-information__grid--limit-details .product-details > .group-block {
+    max-width: var(--sidebar-width);
+  }
+
+  /* If the header is sticky, make product details content stick underneath the header */
+  body:has(#header-group #header-component[data-sticky-state='active']) .product-details.sticky-content--desktop {
+    --sticky-header-offset: var(--header-height);
+  }
+/* geändert 2025-11-12 v1.2 – robuste Mindestpreis-Steuerung + fehlende Flächen-Hinweis-Styles */
+.min-area-note{display:none;margin-top:.75rem}
+.min-area-note[data-state="show"]{display:block}
+.min-area-note__box{padding:.75rem;border:1px solid currentColor;opacity:.9;border-radius:.25rem}
+
+/* Preis erzwingen, wenn Mindestpreis aktiv ist */
+.product-information[data-minprice="active"] .price,
+.product-information[data-minprice="active"] .price__regular,
+.product-information[data-minprice="active"] .price__sale,
+.product-information[data-minprice="active"] .product__price,
+.product-information[data-minprice="active"] [data-testid="price"],
+.product-information[data-minprice="active"] .price-item,
+.product-information[data-minprice="active"] .money { display:none !important; }
+
+.product-information[data-minprice="active"] #minprice-wrap { display:block !important; }
+.product-information:not([data-minprice="active"]) #minprice-wrap { display:none !important; }
+
+.minprice__wrap{margin:.5rem 0}
+.minprice__box{padding:.5rem;border:1px solid currentColor;border-radius:.25rem}
+.minprice__label{font-weight:600}
+
+{% endstylesheet %}
+{%- comment -%} geändert 2025-11-12 v1.0 – Mindestfläche 1 m² Hinweis {%- endcomment -%}
+
+<template id="tpl-min-area-note">
+  <div id="min-area-note" class="min-area-note" aria-live="polite" data-state="inactive">
+    <div class="min-area-note__box">
+      <strong>Hinweis:</strong>
+      Die berechnete Fläche beträgt <span data-area>–</span> m².
+      Es gilt ein Mindestberechnungswert von 1,000 m².
+    </div>
+  </div>
+</template>
+
+  {%- comment -%} geändert 2025-11-12 v1.1 – eigene Preisbox {%- endcomment -%}
+  <template id="tpl-minprice-box">
+    <div id="minprice-wrap" class="minprice__wrap" minprice-active="false" aria-live="polite">
+      <div class="minprice__box">
+        <span class="minprice__label">Mindestpreis (1,000 m²):</span>
+        <span class="minprice__value" data-minprice>–</span>
+        <span class="minprice__area"> · Fläche: <span data-area>–</span> m²</span>
+      </div>
+    </div>
+  </template>
+ <!-- geändert 2025-12-12 v2.1 – Easify-Integration mit MPC-basierten Mindestpreisen -->
+<script>
+(function(){
+  // Doppelte Initialisierung verhindern
+  const root = document.querySelector('.product-information');
+  
+  if (!root || root.dataset.minpriceInit === '1') {
+    return;
+  }
+  root.dataset.minpriceInit = '1';
+
+  // Mindestpreise pro m² basierend auf Material-Profil-Farbe (MPC)
+  const MIN_PRICE_TABLE = {
+    '_1_2': { standard: 23.22, special: 24.67 }, // PVC Mini
+    '_2_2': { standard: 24.58, special: 25.58 }, // PVC Maxi
+    '_1_1': { standard: 33.60, special: 34.68 }, // Alu Mini
+    '_2_1': { standard: 37.15, special: 37.91 }  // Alu Maxi
+  };
+
+  // Währung robuster bestimmen
+  const CURRENCY =
+    (window.Shopify && Shopify.currency && Shopify.currency.active) ||
+    (window.Shopify && Shopify.localization && Shopify.localization.currency && Shopify.localization.currency.iso_code) ||
+    {{ shop.currency | json }};
+  const nf = new Intl.NumberFormat('de-DE', { style:'currency', currency: CURRENCY, maximumFractionDigits: 2 });
+
+  function q(s, r = root){ return r ? r.querySelector(s) : null; }
+  function first(arr){ for(const s of arr){ const el = q(s); if(el) return el; } return null; }
+
+  // Eingabefelder (mm)
+  function findInputs(){
+    const w = first(['input[name*="breite" i]','input[id*="breite" i]','input[name*="width" i]','input[id*="width" i]']);
+    const h = first(['input[name*="höhe" i]','input[id*="höhe" i]','input[name*="hoehe" i]','input[id*="hoehe" i]','input[name*="height" i]','input[id*="height" i]']);
+    return { w, h };
+  }
+  function parseMM(el){
+    if(!el) return NaN;
+    const v = String(el.value||'').replace(/[^\d.,]/g,'').replace(',', '.');
+    return v ? parseFloat(v) : NaN;
+  }
+
+  // Material, Profil und Farbe aus Easify-Feldern auslesen
+  function getMPC(){
+    // Suche nach Inputs mit Namen die "Materialauswahl" enthalten
+    const material = Array.from(document.querySelectorAll('input[type="radio"]:checked')).find(el => 
+      el.name && el.name.toLowerCase().includes('materialauswahl')
+    );
+    
+    // Suche nach Inputs mit Namen die "Profilhoehe" oder "Profilhöhe" enthalten
+    const profile = Array.from(document.querySelectorAll('input[type="radio"]:checked')).find(el => 
+      el.name && (el.name.toLowerCase().includes('profilhoehe') || el.name.toLowerCase().includes('profilhöhe'))
+    );
+    
+    if(!material || !profile) return null;
+    
+    const mat = material.value ? material.value.toLowerCase() : '';
+    const prof = profile.value ? profile.value.toLowerCase() : '';
+    
+    // Code ermitteln (z.B. _1_1 für Alu Mini)
+    let code = null;
+    if(mat.includes('alu') || mat.includes('aluminium')){
+      code = prof.includes('mini') ? '_1_1' : '_2_1';
+    } else if(mat.includes('pvc')){
+      code = prof.includes('mini') ? '_1_2' : '_2_2';
+    }
+    
+    if(!code) return null;
+    
+    // Farbe auslesen - Suche nach den entsprechenden Farbfeld-Namen
+    let colorFieldKeywords = [];
+    if(code === '_1_1') colorFieldKeywords = ['farbwahl_alu_mini', 'farbwahl alu mini'];
+    else if(code === '_2_1') colorFieldKeywords = ['farbwahl_alu_maxi', 'farbwahl alu maxi'];
+    else if(code === '_1_2') colorFieldKeywords = ['farbwahl_pvc_mini', 'farbwahl pvc mini'];
+    else if(code === '_2_2') colorFieldKeywords = ['farbwahl_pvc_maxi', 'farbwahl pvc maxi'];
+    
+    let colorInput = null;
+    if(colorFieldKeywords.length > 0){
+      colorInput = Array.from(document.querySelectorAll('input[type="radio"]:checked')).find(el => 
+        el.name && colorFieldKeywords.some(kw => el.name.toLowerCase().includes(kw))
+      );
+    }
+    
+    const isSpecial = colorInput && colorInput.value && (colorInput.value.toLowerCase().includes('special') || colorInput.value.toLowerCase().includes('sonder') || colorInput.value.toLowerCase().includes('(s)'));
+    
+    return { code, isSpecial };
+  }
+
+  // Mindestpreis für MPC-Kombination auslesen
+  function getMinPricePerSqM(){
+    const mpc = getMPC();
+    if(!mpc || !MIN_PRICE_TABLE[mpc.code]) return null;
+    const priceObj = MIN_PRICE_TABLE[mpc.code];
+    return mpc.isSpecial ? priceObj.special : priceObj.standard;
+  }
+
+  // Preis-Knoten innerhalb der Section
+  function findPriceNode(){
+    const cands = ['.price','[data-price]','.price__regular','.price__sale','.product__price','[data-testid="price"]','.price-item--regular','.price__current','.money'];
+    for(const s of cands){
+      const n = q(s);
+      if(n) return n.closest('.price') || n;
+    }
+    return null;
+  }
+
+  // Templates mounten
+  function ensureAreaNote(){
+    const host = q('.product-details') || root;
+    let note = q('#min-area-note', host);
+    if(!note){
+      const tpl = document.getElementById('tpl-min-area-note');
+      if(tpl && tpl.content && tpl.content.firstElementChild){
+        note = tpl.content.firstElementChild.cloneNode(true);
+        host.appendChild(note);
+      }
+    }
+    return note;
+  }
+  function ensureMinBox(){
+    const host = q('.product-details') || root;
+    let wrap = q('#minprice-wrap', host);
+    if(!wrap){
+      const tpl = document.getElementById('tpl-minprice-box');
+      if(tpl && tpl.content && tpl.content.firstElementChild){
+        wrap = tpl.content.firstElementChild.cloneNode(true);
+        const pn = findPriceNode();
+        if(pn && pn.parentNode) pn.parentNode.insertBefore(wrap, pn.nextSibling);
+        else host.appendChild(wrap);
+      }
+    }
+    return wrap;
+  }
+
+  // Preis robust parsen (letzte Zahl)
+  function parsePriceFromNode(node){
+    if(!node) return NaN;
+    const txt = node.textContent || '';
+    const nums = txt.match(/[\d.,]+/g);
+    if(!nums || !nums.length) return NaN;
+    const last = nums[nums.length - 1].replace(/\./g,'').replace(',', '.');
+    const val = parseFloat(last);
+    return isFinite(val) ? val : NaN;
+  }
+
+  function setAttrIfChanged(el, name, value){
+    if(el && el.getAttribute(name) !== value) el.setAttribute(name, value);
+  }
+
+  let raf = 0, lastShown = '';
+  function compute(){
+    const areaNote = ensureAreaNote();
+    const minBox   = ensureMinBox();
+    const priceNode = findPriceNode();
+
+    const { w, h } = findInputs();
+    const bw = parseMM(w), bh = parseMM(h);
+
+    if(!isFinite(bw) || !isFinite(bh) || bw<=0 || bh<=0 || !priceNode || !minBox){
+      setAttrIfChanged(root, 'data-minprice', 'inactive');
+      if(areaNote) setAttrIfChanged(areaNote, 'data-state', 'inactive');
+      return;
+    }
+
+    const mpc = getMPC();
+
+    const area = (bw * bh) / 1e6; // mm² -> m²
+    if(areaNote){
+      const aTxt = area.toFixed(3).replace('.', ',');
+      const aEl = areaNote.querySelector('[data-area]');
+      if(aEl && aEl.textContent !== aTxt) aEl.textContent = aTxt;
+      setAttrIfChanged(areaNote, 'data-state', area < 1 ? 'show' : 'hide');
+    }
+
+    const current = parsePriceFromNode(priceNode);
+    if(!isFinite(current)){ setAttrIfChanged(root,'data-minprice','inactive'); return; }
+
+    // Mindestpreis basierend auf MPC anwenden, wenn Fläche < 1 m²
+    let effectivePrice = current;
+    let useMin = false;
+    
+    if(area < 1){
+      let minPricePerSqM = null;
+      if(mpc && MIN_PRICE_TABLE[mpc.code]){
+        const priceObj = MIN_PRICE_TABLE[mpc.code];
+        minPricePerSqM = mpc.isSpecial ? priceObj.special : priceObj.standard;
+      }
+      if(minPricePerSqM){
+        const minPriceTotal = minPricePerSqM * 1;
+        if(current < minPriceTotal){
+          effectivePrice = minPriceTotal;
+          useMin = true;
+        }
+      }
+    }
+
+    const areaOut = minBox.querySelector('[data-area]');
+    const priceOut = minBox.querySelector('[data-minprice]');
+    const pTxt = nf.format(effectivePrice);
+    if(areaOut){ const t = area.toFixed(3).replace('.', ','); if(areaOut.textContent !== t) areaOut.textContent = t; }
+    if(priceOut && lastShown !== pTxt){ priceOut.textContent = pTxt; lastShown = pTxt; }
+
+    setAttrIfChanged(root, 'data-minprice', useMin ? 'active' : 'inactive');
+  }
+
+  const safeCompute = ()=>{ cancelAnimationFrame(raf); raf = requestAnimationFrame(compute); };
+
+  const details = q('.product-details') || root;
+  const mo = new MutationObserver(safeCompute);
+  mo.observe(details, { childList:true, subtree:true, attributes:true, attributeFilter:['data-variant','data-product-id'] });
+
+  details.addEventListener('input', safeCompute, true);
+  details.addEventListener('change', safeCompute, true);
+  window.addEventListener('load', safeCompute);
+  safeCompute();
+})();
+</script>
+
+{% schema %}
+{
+  "name": "t:names.product_information",
+  "blocks": [
+    {
+      "type": "@app"
+    }
+  ],
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "content_width",
+      "label": "t:settings.width",
+      "options": [
+        {
+          "value": "content-center-aligned",
+          "label": "t:options.page"
+        },
+        {
+          "value": "content-full-width",
+          "label": "t:options.full"
+        }
+      ],
+      "default": "content-center-aligned"
+    },
+    {
+      "type": "select",
+      "id": "desktop_media_position",
+      "label": "t:settings.media_position",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "checkbox",
+      "id": "equal_columns",
+      "label": "t:settings.equal_columns",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "limit_details_width",
+      "label": "t:settings.limit_product_details_width",
+      "default": false,
+      "visible_if": "{{ section.settings.equal_columns }}"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:settings.gap",
+      "min": 0,
+      "max": 48,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": []
+}
+{% endschema %}
