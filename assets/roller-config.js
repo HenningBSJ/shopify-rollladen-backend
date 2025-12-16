@@ -206,11 +206,11 @@ window.RollerConfig = {
     const enabled = document.getElementById('endleiste-enabled').checked;
     this.state.endleiste.enabled = enabled;
 
-    const endleiste Options = document.getElementById('endleiste-options');
+    const endleistOptions = document.getElementById('endleiste-options');
     if (enabled) {
-      endleiste Options.classList.add('active');
+      endleistOptions.classList.add('active');
     } else {
-      endleiste Options.classList.remove('active');
+      endleistOptions.classList.remove('active');
     }
 
     this.calculatePrice();
