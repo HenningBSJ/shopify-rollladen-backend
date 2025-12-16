@@ -1,0 +1,112 @@
+{{ 'roller-config.css' | asset_url | stylesheet_tag }}
+
+<div class="roller-customizer">
+  <h2>Rollladen nach Maß konfigurieren</h2>
+
+  <form id="roller-config-form" method="POST">
+    <!-- Material Selection -->
+    <div class="form-group">
+      <label>Material</label>
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="material" value="alu" checked>
+          Aluminium
+        </label>
+        <label>
+          <input type="radio" name="material" value="pvc">
+          PVC
+        </label>
+      </div>
+    </div>
+
+    <!-- Profile Selection -->
+    <div class="form-group">
+      <label>Profilhöhe</label>
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="profile" value="mini" checked>
+          Mini (37 mm)
+        </label>
+        <label>
+          <input type="radio" name="profile" value="maxi">
+          Maxi (52 mm)
+        </label>
+      </div>
+    </div>
+
+    <!-- Dimensions -->
+    <div class="form-group">
+      <label>Abmessungen (mm)</label>
+      <div class="dimension-group">
+        <div class="dimension-input">
+          <label for="width">Breite</label>
+          <input type="number" id="width" name="width" value="0" min="100" max="3000" placeholder="z.B. 900">
+          <small>100 - 3000 mm</small>
+          <div class="error-message" id="width-error"></div>
+        </div>
+        <div class="dimension-input">
+          <label for="height">Höhe</label>
+          <input type="number" id="height" name="height" value="0" min="100" max="2500" placeholder="z.B. 800">
+          <small>100 - 2500 mm</small>
+          <div class="error-message" id="height-error"></div>
+        </div>
+      </div>
+      <div class="area-display">
+        Fläche: <span id="area-display">0.000</span> m²
+      </div>
+    </div>
+
+    <!-- Color Selection -->
+    <div class="form-group">
+      <label>Farbe</label>
+      <div id="color-options" class="color-preview">
+        <!-- Dynamically populated by JS -->
+      </div>
+    </div>
+
+    <!-- Endleiste (Finishing Bar) Section -->
+    <div class="endleiste-section">
+      <h3>Endleiste (Aluminium)</h3>
+      <div class="endleiste-toggle">
+        <input type="checkbox" id="endleiste-enabled" name="endleiste-enabled">
+        <label for="endleiste-enabled" style="margin-bottom: 0;">Endleiste hinzufügen (+€12,50)</label>
+      </div>
+
+      <div id="endleiste-options" class="endleiste-options">
+        <!-- Color Selection -->
+        <div class="form-group">
+          <label>Endleisten-Farbe</label>
+          <div id="endleiste-color-options" class="color-preview">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </div>
+
+        <!-- Holes for Stoppers -->
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="endleiste-holes" name="endleiste-holes" checked>
+            <label for="endleiste-holes" style="margin-bottom: 0;">Löcher für Stopper (Standard)</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Price Display -->
+    <div class="price-display">
+      <div class="label">Gesamtpreis</div>
+      <div class="amount">
+        <span class="currency">€</span><span id="total-price">0.00</span>
+      </div>
+      <div class="minimum-warning" id="minimum-warning">
+        Mindestbestellung: 1,0 m² - Gesamtfläche wird mit Mindestpreis berechnet
+      </div>
+    </div>
+
+    <!-- Add to Cart Button -->
+    <button type="button" id="add-to-cart-btn" class="add-to-cart-btn">
+      In den Warenkorb
+    </button>
+  </form>
+</div>
+
+<script src="{{ 'roller-config.js' | asset_url }}" defer></script>
