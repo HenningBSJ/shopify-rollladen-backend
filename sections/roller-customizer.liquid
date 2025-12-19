@@ -1,7 +1,110 @@
 {{ 'roller-config.css' | asset_url | stylesheet_tag }}
+{{ 'auth-config.js' | asset_url | script_tag }}
 
-<div class="roller-customizer">
+<div id="auth-guard"></div>
+<div class="roller-customizer" id="customizer-content" style="display: none;">
   <h2>Rollladen nach Maß konfigurieren</h2>
+
+  <!-- Registration Section (Collapsible) -->
+  <div class="registration-section">
+    <button type="button" class="registration-toggle">
+      <span>📋 Geschäftskundendaten</span>
+      <span class="toggle-icon">▼</span>
+    </button>
+    
+    <div class="registration-form-container" id="registration-form-container" style="display: none;">
+      <h3>Geschäftskundenkonto</h3>
+      
+      <!-- Country Selector -->
+      <div class="form-group">
+        <label for="customer-country">Land</label>
+        <select id="customer-country" name="country" required>
+          <option value="">-- Wählen Sie Ihr Land --</option>
+          <option value="de">Deutschland (DE)</option>
+          <option value="at">Österreich (AT)</option>
+          <option value="ch">Schweiz (CH)</option>
+          <option value="li">Liechtenstein (LI)</option>
+        </select>
+      </div>
+
+      <!-- Company Information -->
+      <div class="form-group">
+        <label for="company-name">Unternehmen</label>
+        <input type="text" id="company-name" name="company-name" placeholder="Unternehmensname" required>
+      </div>
+
+      <!-- Contact Person -->
+      <div class="form-group">
+        <label for="contact-person">Ansprechpartner</label>
+        <input type="text" id="contact-person" name="contact-person" placeholder="Vor- und Nachname" required>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="customer-email">E-Mail</label>
+          <input type="email" id="customer-email" name="customer-email" placeholder="info@example.de" required>
+        </div>
+        <div class="form-group flex-1">
+          <label for="customer-phone">Telefon</label>
+          <input type="tel" id="customer-phone" name="customer-phone" placeholder="+49 123 456789" required>
+        </div>
+      </div>
+
+      <!-- Address Fields -->
+      <div id="address-fields">
+        <!-- Dynamic address fields based on country -->
+      </div>
+
+      <!-- Project Code -->
+      <div class="form-group">
+        <label for="project-code">Projektcode (optional)</label>
+        <input type="text" id="project-code" name="project-code" placeholder="z.B. PRJ-2024-001">
+      </div>
+    </div>
+  </div>
+
+  <!-- Measurement Instructions Section (Collapsible) -->
+  <div class="instructions-section">
+    <button type="button" class="instructions-toggle">
+      <span>📏 Fenster ausmessen - Anleitung</span>
+      <span class="toggle-icon">▼</span>
+    </button>
+    
+    <div class="instructions-container" id="instructions-container" style="display: none;">
+      <h3>Korrekte Messung Ihres Fensters</h3>
+      
+      <div class="instruction-content">
+        <h4>Schritt-für-Schritt Anleitung:</h4>
+        <ol>
+          <li><strong>Breite messen:</strong> Messen Sie die innere Breite des Fensterrahmens horizontal von rechts nach links. Verwenden Sie mindestens 3 Messstellen (oben, Mitte, unten) und nehmen Sie die kleinste Messung.</li>
+          <li><strong>Höhe messen:</strong> Messen Sie die innere Höhe des Fensterrahmens vertikal von oben nach unten. Verwenden Sie mindestens 3 Messstellen (links, Mitte, rechts) und nehmen Sie die kleinste Messung.</li>
+          <li><strong>Messung aufrunden:</strong> Runden Sie Ihre Messung auf die nächsten 10mm auf (z.B. 895mm wird zu 900mm).</li>
+          <li><strong>Material und Profil wählen:</strong> Berücksichtigen Sie die Tiefe Ihres Fensterrahmens bei der Auswahl zwischen Mini (37mm) und Maxi (52mm) Profil.</li>
+        </ol>
+
+        <h4>Wichtige Hinweise:</h4>
+        <ul>
+          <li>Verwenden Sie ein stabieles Stahllineal oder Messstab</li>
+          <li>Messen Sie immer die innere Öffnung (Lichte Weite)</li>
+          <li>Beachten Sie eventuelle Unebenheiten des Rahmens</li>
+          <li>Bei Unsicherheiten immer die kleinere Messung verwenden</li>
+        </ul>
+
+        <div class="video-guide">
+          <h4>Video-Anleitung:</h4>
+          <p>Schauen Sie sich unsere Video-Anleitung zur korrekten Messung an:</p>
+          <div class="video-container">
+            <video id="measurement-video" controls width="100%" style="max-width: 600px; background: #f0f0f0;">
+              <source src="" type="video/mp4">
+              Ihr Browser unterstützt das Video-Tag nicht.
+            </video>
+            <p class="video-note">Video wird geladen. Bitte warten Sie einen Moment...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <form id="roller-config-form" method="POST">
     <!-- Material Selection -->
@@ -34,25 +137,38 @@
       </div>
     </div>
 
-    <!-- Dimensions -->
-    <div class="form-group">
-      <label>Abmessungen (mm)</label>
-      <div class="dimension-group">
-        <div class="dimension-input">
-          <label for="width">Breite</label>
-          <input type="number" id="width" name="width" value="0" min="100" max="3000" placeholder="z.B. 900">
-          <small>100 - 3000 mm</small>
-          <div class="error-message" id="width-error"></div>
-        </div>
-        <div class="dimension-input">
-          <label for="height">Höhe</label>
-          <input type="number" id="height" name="height" value="0" min="100" max="2500" placeholder="z.B. 800">
-          <small>100 - 2500 mm</small>
-          <div class="error-message" id="height-error"></div>
+    <!-- Main Content Flex Container -->
+    <div class="form-content-wrapper">
+      <!-- Image Preview (Left on Desktop, Top on Mobile) -->
+      <div class="image-section">
+        <div class="image-preview-container">
+          <img id="roller-image" src="" alt="Rollladen Vorschau" class="roller-preview-image">
         </div>
       </div>
-      <div class="area-display">
-        Fläche: <span id="area-display">0.000</span> m²
+
+      <!-- Form Content (Right on Desktop, Below Image on Mobile) -->
+      <div class="form-section">
+        <!-- Dimensions -->
+        <div class="form-group">
+          <label>Abmessungen (mm)</label>
+          <div class="dimension-group">
+            <div class="dimension-input">
+              <label for="width">Breite</label>
+              <input type="number" id="width" name="width" value="0" min="100" max="3000" placeholder="z.B. 900">
+              <small>100 - 3000 mm</small>
+              <div class="error-message" id="width-error"></div>
+            </div>
+            <div class="dimension-input">
+              <label for="height">Höhe</label>
+              <input type="number" id="height" name="height" value="0" min="100" max="2500" placeholder="z.B. 800">
+              <small>100 - 2500 mm</small>
+              <div class="error-message" id="height-error"></div>
+            </div>
+          </div>
+          <div class="area-display">
+            Fläche: <span id="area-display">0.000</span> m²
+          </div>
+        </div>
       </div>
     </div>
 
@@ -64,15 +180,11 @@
       </div>
     </div>
 
-    <!-- Endleiste (Finishing Bar) Section -->
+    <!-- Endleiste (Finishing Bar) Section - Always Enabled -->
     <div class="endleiste-section">
       <h3>Endleiste (Aluminium)</h3>
-      <div class="endleiste-toggle">
-        <input type="checkbox" id="endleiste-enabled" name="endleiste-enabled">
-        <label for="endleiste-enabled" style="margin-bottom: 0;">Endleiste hinzufügen (+€12,50)</label>
-      </div>
 
-      <div id="endleiste-options" class="endleiste-options">
+      <div id="endleiste-options" class="endleiste-options active">
         <!-- Color Selection -->
         <div class="form-group">
           <label>Endleisten-Farbe</label>
@@ -102,6 +214,16 @@
       </div>
     </div>
 
+    <!-- Quantity Selector -->
+    <div class="quantity-section">
+      <label for="quantity">Menge</label>
+      <div class="quantity-input-group">
+        <button type="button" id="quantity-decrease" class="quantity-btn" aria-label="Decrease quantity">−</button>
+        <input type="number" id="quantity" name="quantity" value="1" min="1" max="999">
+        <button type="button" id="quantity-increase" class="quantity-btn" aria-label="Increase quantity">+</button>
+      </div>
+    </div>
+
     <!-- Add to Cart Button -->
     <button type="button" id="add-to-cart-btn" class="add-to-cart-btn">
       In den Warenkorb
@@ -110,3 +232,27 @@
 </div>
 
 <script src="{{ 'roller-config.js' | asset_url }}" defer></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const guard = document.getElementById('auth-guard');
+  const content = document.getElementById('customizer-content');
+  
+  if (!window.AuthManager.isAuthenticated()) {
+    guard.innerHTML = `
+      <div style="text-align: center; padding: 2rem;">
+        <p style="font-size: 1.1rem; color: #666; margin-bottom: 2rem;">
+          Bitte melden Sie sich an, um den Konfigurator zu nutzen.
+        </p>
+        <a href="/pages/auth" style="display: inline-block; padding: 0.75rem 1.5rem; background: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">
+          Zur Anmeldung
+        </a>
+      </div>
+    `;
+  } else {
+    guard.style.display = 'none';
+    content.style.display = 'block';
+    console.log('[Auth] User authenticated, showing customizer');
+  }
+});
+</script>

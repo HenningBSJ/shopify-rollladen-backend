@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "auth": {
+      "type": "auth",
+      "settings": {}
+    }
+  },
+  "order": ["auth"]
+}

@@ -391,12 +391,28 @@ const interval = setInterval(() => {
 
 ## Session History
 
-- **Session 10 (Current)**: Git setup, requirement clarification, Plan B architecture design
+- **Session 10**: Git setup, requirement clarification, Plan B architecture design
   - ✅ Git initialized with `master` (archive) and `dawn` (active) branches
   - ✅ Down theme v15.41 pulled from Shopify
   - ✅ Endleiste requirements finalized (material, colors, holes, motor integration)
   - ✅ Plan B approach confirmed (Vanilla JS)
-  - 📋 Next: Begin implementation (sections/roller-customizer.liquid)
+  - ✅ Initial implementation (sections/roller-customizer.liquid, roller-config.js, roller-config.css)
+
+- **Session 11 (Current)**: Visual Enhancement & Color System Overhaul
+  - ✅ Removed native Shopify product form (eliminated duplicate UI confusion)
+  - ✅ Made Endleiste permanent feature (default enabled, removed toggle, no separate pricing)
+  - ✅ Added professional quantity selector with +/− buttons and price multiplier
+  - ✅ Completely restructured color system (material/profile specific: 9 PVC colors, 19 Alu Mini, 14 Alu Maxi)
+  - ✅ Fixed critical profile-switching bug (color options now update dynamically on profile change)
+  - ✅ Fixed schema validation error (page_width default now number not string)
+  - ✅ Implemented dynamic image loading infrastructure:
+    - Added image preview container to HTML
+    - Created `extractAssetBaseUrl()` to determine Shopify asset URL
+    - Created `updateRollerImage()` to load roller images by profile & color
+    - Images update on init, material change, profile change, and color change
+  - ✅ Documented image naming convention (roller-[profile]-[colorid].png)
+  - ✅ Added responsive CSS styling for image preview (200-400px max-height)
+  - 📋 Next: Phase 2 - Image integration testing and finishing bar images
 
 ---
 
@@ -424,22 +440,111 @@ assets/roller-config.css           (200-300 LOC, optional)
 - Minimum area: 1.0 m²
 
 ### Key Features
-- ✅ MPC-based pricing
+- ✅ MPC-based pricing (8 combinations)
+- ✅ Quantity selector with price multiplier
 - ✅ Dimension persistence (localStorage)
-- ✅ Endleiste customization
+- ✅ Endleiste always enabled (no toggle)
+- ✅ Material/profile-specific colors
+- ✅ Dynamic image preview
 - ✅ Real-time price display
 - ✅ Shopify cart integration
+
+### Image Integration (Session 11-12)
+**Image Format**: `roller-[profile]-[colorid].png`
+**Storage**: Shopify theme assets folder (all 33 images uploaded ✅)
+**Naming Convention**: 
+- Profile: `mini` or `maxi`
+- Color ID: `beige`, `weiss`, `grau`, `silber`, `cremeweiss`, `moosgruen`, etc. (no `_s` suffix)
+- Example: `roller-mini-beige.png`, `roller-maxi-moosgruen.png`
+
+**Implementation** (Session 12 Bug Fixes):
+- `extractAssetBaseUrl()` - Parses script tag, removes version parameters (fixed `?v=...` handling)
+- `updateRollerImage()` - Updates image based on profile + color
+- `isSpecialColor()` - Refactored to check against standard color list instead of `_s` suffix
+- Triggers on: init, material change, profile change, color change
+- All images loading: **200 OK** ✅ (was 404 due to color ID mismatch)
+- Responsive: max-height 200-400px depending on viewport
+
+---
+
+## Implementation Status
+
+**Phase 1 (MVP)** ✅ COMPLETE
+- Form structure
+- State management
+- Pricing engine (all 8 MPC combinations)
+- Quantity selector
+- localStorage persistence
+- Shopify cart integration
+
+**Phase 2 (Visual)** ✅ COMPLETE (Session 12)
+- Image preview infrastructure ✅
+- All 33 roller images uploaded to Shopify ✅
+- Image loading working (200 OK, no 404s) ✅
+- Color ID naming fixed (removed `_s` suffix) ✅
+- Asset URL extraction fixed (handles version params) ✅
+
+**Phase 3 (UX Enhancements)** 🟠 IN PROGRESS (Session 12)
+- Responsive layout (images left on desktop, underneath on mobile)
+- Trade customer registration form (DE, AT, CH, LI)
+- Project code field for order reference
+- Measurement instructions with embedded guides
+
+**Phase 4 (Polish)** 📋 TODO
+- Finishing bar images (optional Phase)
+- Full workflow testing
+- Checkout flow verification
+
+**Phase 5 (Production)** 📋 TODO
+- Final testing
+- Production deployment
 
 ---
 
 ## Status Summary
 
-**Project Status**: READY FOR IMPLEMENTATION ✅  
+**Project Status**: PHASE 3 (UX ENHANCEMENTS) 🔄  
 **Branch**: `dawn` (active)  
-**Approach**: Plan B (Vanilla JavaScript)  
-**Certainty**: 94%  
-**Risk**: Very Low  
-**Timeline**: 3-4 days to MVP  
-**Cost**: Dev hours only, €0/month recurring  
+**Approach**: Plan B (Vanilla JavaScript) ✅  
+**Core Features**: 95% Complete  
+**Image Preview**: 100% Complete ✅  
 
-Ready to start building? 🚀
+**What's Working**:
+- All pricing calculations ✅
+- Quantity selection ✅
+- Color system (material/profile specific) ✅
+- All 33 roller images loading correctly ✅
+- localStorage persistence ✅
+- Cart integration ✅
+
+**What's Next** (Session 12+):
+1. Responsive layout - images left on desktop, underneath on mobile
+2. Trade customer registration form (DE, AT, CH, LI with country-specific fields)
+3. Project code field for order reference on bill
+4. Measurement instructions with embedded guides
+5. Finishing bar images (optional Phase 4)
+
+---
+
+## Session History
+
+- **Session 10**: Git setup, requirement clarification, Plan B architecture design
+  - ✅ Git initialized with `master` (archive) and `dawn` (active) branches
+  - ✅ Down theme v15.41 pulled from Shopify
+  - ✅ Initial implementation (sections/roller-customizer.liquid, roller-config.js, roller-config.css)
+
+- **Session 11**: Visual enhancement & color system overhaul
+  - ✅ Removed native Shopify product form
+  - ✅ Made Endleiste permanent (default enabled)
+  - ✅ Added quantity selector with price multiplier
+  - ✅ Restructured color system (material/profile specific)
+  - ✅ Implemented image preview infrastructure
+  
+- **Session 12** (Current): Image integration bug fixes & Phase 3 planning
+  - ✅ Pushed all 33 roller images to Shopify theme
+  - ✅ Fixed `extractAssetBaseUrl()` to handle version parameters (`?v=...`)
+  - ✅ Fixed color ID naming (removed `_s` suffix to match image filenames)
+  - ✅ Updated `isSpecialColor()` logic to check standard color list
+  - ✅ All images now loading (200 OK, no 404s)
+  - ✅ Updated DAWN_PROJECT.md with new status
+  - 📋 Planning Phase 3: Responsive layout, registration form, project code, measurement instructions

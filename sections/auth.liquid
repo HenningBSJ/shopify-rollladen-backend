@@ -1,0 +1,179 @@
+{{ 'auth-config.css' | asset_url | stylesheet_tag }}
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-card-header">
+      <h1>Rollladen Shop</h1>
+      <p>Geschäftskundenkonto</p>
+    </div>
+
+    <div class="auth-card-body">
+      <div id="auth-message"></div>
+
+      <ul class="auth-tabs">
+        <li class="auth-tab">
+          <button class="tab-button active" data-tab="login">Anmelden</button>
+        </li>
+        <li class="auth-tab">
+          <button class="tab-button" data-tab="register">Registrieren</button>
+        </li>
+      </ul>
+
+      <form id="login-form" class="auth-form active">
+        <div class="auth-form-group">
+          <label for="login-email">E-Mail</label>
+          <input type="email" id="login-email" name="email" placeholder="info@example.de" required>
+          <div class="error-message"></div>
+        </div>
+        <div class="auth-form-group">
+          <label for="login-password">Passwort</label>
+          <input type="password" id="login-password" name="password" placeholder="Mindestens 8 Zeichen" required>
+          <div class="error-message"></div>
+        </div>
+        <button type="submit" class="auth-button" id="login-btn">Anmelden</button>
+      </form>
+
+      <form id="register-form" class="auth-form">
+        <div class="auth-form-group">
+          <label for="register-country">Land</label>
+          <select id="register-country" name="country" required>
+            <option value="">-- Wählen Sie Ihr Land --</option>
+            <option value="de">Deutschland (DE)</option>
+            <option value="at">Österreich (AT)</option>
+            <option value="ch">Schweiz (CH)</option>
+            <option value="li">Liechtenstein (LI)</option>
+          </select>
+          <div class="error-message"></div>
+        </div>
+        <div class="auth-form-group">
+          <label for="register-company">Unternehmen</label>
+          <input type="text" id="register-company" name="company_name" placeholder="Unternehmensname" required>
+          <div class="error-message"></div>
+        </div>
+        <div class="auth-form-group">
+          <label for="register-contact">Ansprechpartner</label>
+          <input type="text" id="register-contact" name="contact_person" placeholder="Vor- und Nachname" required>
+          <div class="error-message"></div>
+        </div>
+        <div class="auth-form-row">
+          <div class="auth-form-group">
+            <label for="register-email">E-Mail</label>
+            <input type="email" id="register-email" name="email" placeholder="info@example.de" required>
+            <div class="error-message"></div>
+          </div>
+          <div class="auth-form-group">
+            <label for="register-phone">Telefon</label>
+            <input type="tel" id="register-phone" name="phone" placeholder="+49 123 456789" required>
+            <div class="error-message"></div>
+          </div>
+        </div>
+        <div class="auth-form-group">
+          <label for="register-password">Passwort</label>
+          <input type="password" id="register-password" name="password" placeholder="Mindestens 8 Zeichen" required>
+          <small>Mindestens 8 Zeichen</small>
+          <div class="error-message"></div>
+        </div>
+        <div class="auth-form-group">
+          <label for="register-street">Straße</label>
+          <input type="text" id="register-street" name="street" placeholder="z.B. Hauptstraße 123">
+          <div class="error-message"></div>
+        </div>
+        <div class="auth-form-row">
+          <div class="auth-form-group">
+            <label for="register-postal">Postleitzahl</label>
+            <input type="text" id="register-postal" name="postal_code" placeholder="z.B. 10115">
+            <div class="error-message"></div>
+          </div>
+          <div class="auth-form-group">
+            <label for="register-city">Stadt / Ort</label>
+            <input type="text" id="register-city" name="city" placeholder="z.B. Berlin">
+            <div class="error-message"></div>
+          </div>
+        </div>
+        <button type="submit" class="auth-button" id="register-btn">Registrieren</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{{ 'auth-config.js' | asset_url | script_tag }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const forms = document.querySelectorAll('.auth-form');
+  const messageDiv = document.getElementById('auth-message');
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tab = btn.dataset.tab;
+      tabButtons.forEach(b => b.classList.remove('active'));
+      forms.forEach(f => f.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`${tab}-form`).classList.add('active');
+      messageDiv.innerHTML = '';
+    });
+  });
+
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.textContent = 'Wird angemeldet...';
+      try {
+        await window.AuthManager.login(email, password);
+        messageDiv.innerHTML = '<div class="success-message">Anmeldung erfolgreich! Wird weitergeleitet...</div>';
+        setTimeout(() => window.location.href = '/pages/customizer', 2000);
+      } catch (err) {
+        messageDiv.innerHTML = `<div class="error-alert">${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Anmelden';
+      }
+    });
+  }
+
+  const registerForm = document.getElementById('register-form');
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const country = document.getElementById('register-country').value;
+      const company = document.getElementById('register-company').value;
+      const contact = document.getElementById('register-contact').value;
+      const email = document.getElementById('register-email').value;
+      const phone = document.getElementById('register-phone').value;
+      const password = document.getElementById('register-password').value;
+      const street = document.getElementById('register-street').value;
+      const postal = document.getElementById('register-postal').value;
+      const city = document.getElementById('register-city').value;
+      const btn = document.getElementById('register-btn');
+      btn.disabled = true;
+      btn.textContent = 'Wird registriert...';
+      try {
+        await window.AuthManager.register({
+          email, password, company_name: company, contact_person: contact,
+          phone, country, street, postal_code: postal, city,
+        });
+        messageDiv.innerHTML = '<div class="success-message">Registrierung erfolgreich! Wird weitergeleitet...</div>';
+        setTimeout(() => window.location.href = '/pages/customizer', 2000);
+      } catch (err) {
+        messageDiv.innerHTML = `<div class="error-alert">${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Registrieren';
+      }
+    });
+  }
+});
+</script>
+
+{% schema %}
+{
+  "name": "Auth",
+  "settings": []
+}
+{% endschema %}

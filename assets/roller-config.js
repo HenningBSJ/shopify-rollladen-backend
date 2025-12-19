@@ -4,18 +4,21 @@ window.RollerConfig = {
     profile: 'mini',
     width: 0,
     height: 0,
-    color: 'standard',
+    color: 'beige',
     area: 0,
     minPrice: 0,
     totalPrice: 0,
+    quantity: 1,
 
     endleiste: {
-      enabled: false,
-      color: 'silber_eloxiert',
+      enabled: true,
+      color: 'beige',
       holes: true,
       price: 0
     }
   },
+
+  assetBaseUrl: '',
 
   priceTable: {
     alu_mini_standard: 33.60,
@@ -36,34 +39,142 @@ window.RollerConfig = {
   },
 
   colorOptions: {
-    standard: [
-      { id: 'standard', label: 'Standard', hex: '#999999' }
+    pvc_mini: [
+      { id: 'beige', label: 'Beige', hex: '#E0D1C2' },
+      { id: 'weiss', label: 'Weiß', hex: '#F6F7F2' },
+      { id: 'grau', label: 'Grau', hex: '#DFE3E0' },
+      { id: 'altweiss', label: 'Altweiß (S)', hex: '#B0B7B9' },
+      { id: 'hellelfenbein', label: 'Hellelfenbein (S)', hex: '#F7F3E3' },
+      { id: 'holzhell', label: 'Holz hell (S)', hex: '#F0DDB2' },
+      { id: 'oregon', label: 'Oregon (S)', hex: '#E0E6DA' },
+      { id: 'holzdunkel', label: 'Holz dunkel (S)', hex: '#BD8449' },
+      { id: 'graubraun', label: 'Graubraun (S)', hex: '#9D5430' }
     ],
-    special: [
-      { id: 'special_white', label: 'Weiß (RAL 9016)', hex: '#f5f5f5' },
-      { id: 'special_black', label: 'Schwarz (RAL 9005)', hex: '#1a1a1a' },
-      { id: 'special_brown', label: 'Braun (RAL 8014)', hex: '#4a3728' },
-      { id: 'special_silver', label: 'Silber (RAL 9006)', hex: '#e8e8e8' },
-      { id: 'special_beige', label: 'Beige (RAL 1015)', hex: '#e8dcc8' },
-      { id: 'special_custom', label: 'Eigene Farbe', hex: '#0066cc' }
+    pvc_maxi: [
+      { id: 'beige', label: 'Beige', hex: '#E0D1C2' },
+      { id: 'weiss', label: 'Weiß', hex: '#F6F7F2' },
+      { id: 'grau', label: 'Grau', hex: '#DFE3E0' },
+      { id: 'altweiss', label: 'Altweiß (S)', hex: '#B0B7B9' },
+      { id: 'hellelfenbein', label: 'Hellelfenbein (S)', hex: '#F7F3E3' },
+      { id: 'holzhell', label: 'Holz hell (S)', hex: '#F0DDB2' },
+      { id: 'oregon', label: 'Oregon (S)', hex: '#E0E6DA' },
+      { id: 'holzdunkel', label: 'Holz dunkel (S)', hex: '#BD8449' },
+      { id: 'graubraun', label: 'Graubraun (S)', hex: '#9D5430' }
+    ],
+    alu_mini: [
+      { id: 'beige', label: 'Beige', hex: '#E0D1C2' },
+      { id: 'weiss', label: 'Weiß', hex: '#F6F7F2' },
+      { id: 'grau', label: 'Grau', hex: '#DFE3E0' },
+      { id: 'silber', label: 'Silber (S)', hex: '#B0B7B9' },
+      { id: 'cremeweiss', label: 'Cremeweiß (S)', hex: '#F7F3E3' },
+      { id: 'hellelfenbein', label: 'Hellelfenbein (S)', hex: '#F0DDB2' },
+      { id: 'grauweiss', label: 'Grauweiß (S)', hex: '#E0E6DA' },
+      { id: 'holzhell', label: 'Holz hell (S)', hex: '#BD8449' },
+      { id: 'goldenoak', label: 'GoldenOak (S)', hex: '#9D5430' },
+      { id: 'graubraun', label: 'Graubraun (S)', hex: '#362313' },
+      { id: 'anthrazitgrau', label: 'Anthrazitgrau (S)', hex: '#192C32' },
+      { id: 'eisenglimmer', label: 'Eisenglimmer (S)', hex: '#2F3637' },
+      { id: 'moosgruen', label: 'Moosgrün (S)', hex: '#15533D' },
+      { id: 'graualuminium', label: 'Graualuminium (S)', hex: '#5D686D' },
+      { id: 'perlweiss', label: 'Perlweiß (S)', hex: '#EEDFC4' },
+      { id: 'antikweiss', label: 'Antikweiß (S)', hex: '#FFF9EA' },
+      { id: 'altweiss', label: 'Altweiß (S)', hex: '#EBE9DA' },
+      { id: 'oregon', label: 'Oregon (S)', hex: '#B25D42' },
+      { id: 'holzdunkel', label: 'Holz dunkel (S)', hex: '#936640' }
+    ],
+    alu_maxi: [
+      { id: 'beige', label: 'Beige', hex: '#E0D1C2' },
+      { id: 'weiss', label: 'Weiß', hex: '#F6F7F2' },
+      { id: 'grau', label: 'Grau', hex: '#DFE3E0' },
+      { id: 'silber', label: 'Silber (S)', hex: '#B0B7B9' },
+      { id: 'cremeweiss', label: 'Cremeweiß (S)', hex: '#F7F3E3' },
+      { id: 'hellelfenbein', label: 'Hellelfenbein (S)', hex: '#F0DDB2' },
+      { id: 'grauweiss', label: 'Grauweiß (S)', hex: '#E0E6DA' },
+      { id: 'holzhell', label: 'Holz hell (S)', hex: '#BD8449' },
+      { id: 'goldenoak', label: 'GoldenOak (S)', hex: '#9D5430' },
+      { id: 'graubraun', label: 'Graubraun (S)', hex: '#362313' },
+      { id: 'anthrazitgrau', label: 'Anthrazitgrau (S)', hex: '#192C32' },
+      { id: 'eisenglimmer', label: 'Eisenglimmer (S)', hex: '#2F3637' },
+      { id: 'moosgruen', label: 'Moosgrün (S)', hex: '#15533D' },
+      { id: 'graualuminium', label: 'Graualuminium (S)', hex: '#5D686D' }
     ]
   },
 
-  endleistColors: {
-    silber_eloxiert: { label: 'Silber eloxiert', hex: '#c0c0c0', price: 0 },
-    match: { label: 'Abgestimmt auf Rollladen', hex: 'transparent', price: 0 },
-    custom: { label: 'Eigene Farbe', hex: '#0066cc', price: 0 }
+  colorHexMap: {
+    'beige': '#E0D1C2',
+    'weiss': '#F6F7F2',
+    'grau': '#DFE3E0',
+    'silber': '#B0B7B9',
+    'altweiss': '#EBE9DA',
+    'cremeweiss': '#F7F3E3',
+    'hellelfenbein': '#F0DDB2',
+    'holzhell': '#BD8449',
+    'grauweiss': '#E0E6DA',
+    'goldenoak': '#9D5430',
+    'graubraun': '#362313',
+    'anthrazitgrau': '#192C32',
+    'eisenglimmer': '#2F3637',
+    'moosgruen': '#15533D',
+    'graualuminium': '#5D686D',
+    'perlweiss': '#EEDFC4',
+    'antikweiss': '#FFF9EA',
+    'oregon': '#B25D42',
+    'holzdunkel': '#936640'
   },
+
+  endleistColors: {},
 
   init() {
     console.log('[RollerConfig] Initializing...');
+    this.extractAssetBaseUrl();
     this.loadFromStorage();
+    this.buildEndleistColors();
     this.renderColorOptions();
     this.renderEndleistColorOptions();
     this.attachEventListeners();
+    this.loadMeasurementVideo();
     this.calculatePrice();
+    this.updateRollerImage();
     this.render();
     console.log('[RollerConfig] Ready', this.state);
+  },
+
+  buildEndleistColors() {
+    const key = `${this.state.material}_${this.state.profile}`;
+    const rollerColors = this.colorOptions[key] || [];
+    
+    this.endleistColors = {};
+    rollerColors.forEach(color => {
+      this.endleistColors[color.id] = {
+        label: color.label,
+        hex: color.hex,
+        price: 0
+      };
+    });
+    
+    console.log('[RollerConfig] Built Endleiste colors:', Object.keys(this.endleistColors));
+  },
+
+  loadMeasurementVideo() {
+    const videoElement = document.getElementById('measurement-video');
+    if (videoElement) {
+      const videoUrl = this.assetBaseUrl + 'measurement-guide.mp4';
+      videoElement.querySelector('source').src = videoUrl;
+      videoElement.load();
+      console.log('[RollerConfig] Video source set to:', videoUrl);
+    }
+  },
+
+  extractAssetBaseUrl() {
+    const scripts = document.getElementsByTagName('script');
+    for (let script of scripts) {
+      if (script.src && script.src.includes('roller-config.js')) {
+        let url = script.src.split('?')[0];
+        this.assetBaseUrl = url.replace('roller-config.js', '');
+        console.log('[RollerConfig] Asset base URL:', this.assetBaseUrl);
+        return;
+      }
+    }
   },
 
   attachEventListeners() {
@@ -81,7 +192,16 @@ window.RollerConfig = {
     document.getElementById('height').addEventListener('change', () => this.onDimensionChange());
     document.getElementById('height').addEventListener('input', () => this.onDimensionChange());
 
-    document.getElementById('endleiste-enabled').addEventListener('change', () => this.toggleEndleiste());
+    document.getElementById('quantity').addEventListener('change', () => this.onQuantityChange());
+    document.getElementById('quantity').addEventListener('input', () => this.onQuantityChange());
+    document.getElementById('quantity-increase').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.increaseQuantity();
+    });
+    document.getElementById('quantity-decrease').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.decreaseQuantity();
+    });
 
     document.getElementById('add-to-cart-btn').addEventListener('click', () => this.addToCart());
   },
@@ -91,8 +211,11 @@ window.RollerConfig = {
     this.state.material = material;
 
     this.updateDimensionConstraints();
+    this.buildEndleistColors();
     this.renderColorOptions();
+    this.renderEndleistColorOptions();
     this.calculatePrice();
+    this.updateRollerImage();
     this.saveToStorage();
     this.render();
 
@@ -104,7 +227,11 @@ window.RollerConfig = {
     this.state.profile = profile;
 
     this.updateDimensionConstraints();
+    this.buildEndleistColors();
+    this.renderColorOptions();
+    this.renderEndleistColorOptions();
     this.calculatePrice();
+    this.updateRollerImage();
     this.saveToStorage();
     this.render();
 
@@ -172,22 +299,19 @@ window.RollerConfig = {
     }
   },
 
+  isSpecialColor(colorId) {
+    const standardColors = ['beige', 'weiss', 'grau'];
+    return colorId && !standardColors.includes(colorId);
+  },
+
   calculatePrice() {
     const chargeableArea = Math.max(this.state.area, 1.0);
-    const key = `${this.state.material}_${this.state.profile}_${this.state.color}`;
+    const colorType = this.isSpecialColor(this.state.color) ? 'special' : 'standard';
+    const key = `${this.state.material}_${this.state.profile}_${colorType}`;
     const pricePerM2 = this.priceTable[key] || 30;
 
     const basePrice = pricePerM2 * chargeableArea;
-
-    let total = basePrice;
-
-    if (this.state.endleiste.enabled) {
-      const endleistPrice = 12.50;
-      total += endleistPrice;
-      this.state.endleiste.price = endleistPrice;
-    } else {
-      this.state.endleiste.price = 0;
-    }
+    const total = basePrice * this.state.quantity;
 
     this.state.minPrice = pricePerM2;
     this.state.totalPrice = total;
@@ -195,39 +319,43 @@ window.RollerConfig = {
     console.log('[RollerConfig] Price calculated:', {
       area: this.state.area.toFixed(3),
       chargeableArea: chargeableArea.toFixed(3),
+      colorType: colorType,
       pricePerM2: pricePerM2,
       basePrice: basePrice.toFixed(2),
-      endleiste: this.state.endleiste.price.toFixed(2),
+      quantity: this.state.quantity,
       total: total.toFixed(2)
     });
   },
 
-  toggleEndleiste() {
-    const enabled = document.getElementById('endleiste-enabled').checked;
-    this.state.endleiste.enabled = enabled;
-
-    const endleistOptions = document.getElementById('endleiste-options');
-    if (enabled) {
-      endleistOptions.classList.add('active');
-    } else {
-      endleistOptions.classList.remove('active');
-    }
-
+  onQuantityChange() {
+    const quantity = parseInt(document.getElementById('quantity').value) || 1;
+    const validQuantity = Math.max(1, Math.min(quantity, 999));
+    this.state.quantity = validQuantity;
+    document.getElementById('quantity').value = validQuantity;
     this.calculatePrice();
     this.saveToStorage();
     this.render();
+    console.log('[RollerConfig] Quantity changed to:', validQuantity);
+  },
 
-    console.log('[RollerConfig] Endleiste toggled:', enabled);
+  increaseQuantity() {
+    const quantity = Math.min(this.state.quantity + 1, 999);
+    document.getElementById('quantity').value = quantity;
+    this.onQuantityChange();
+  },
+
+  decreaseQuantity() {
+    const quantity = Math.max(this.state.quantity - 1, 1);
+    document.getElementById('quantity').value = quantity;
+    this.onQuantityChange();
   },
 
   renderColorOptions() {
     const container = document.getElementById('color-options');
     container.innerHTML = '';
 
-    const hasSpecial = this.state.material === 'alu'; // Only Alu has special colors
-    const colors = hasSpecial 
-      ? [...this.colorOptions.standard, ...this.colorOptions.special]
-      : this.colorOptions.standard;
+    const key = `${this.state.material}_${this.state.profile}`;
+    const colors = this.colorOptions[key] || [];
 
     colors.forEach(color => {
       const label = document.createElement('label');
@@ -236,8 +364,8 @@ window.RollerConfig = {
       const input = document.createElement('input');
       input.type = 'radio';
       input.name = 'color';
-      input.value = color.id.startsWith('special') ? 'special' : 'standard';
-      input.checked = input.value === this.state.color;
+      input.value = color.id;
+      input.checked = color.id === this.state.color;
 
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
@@ -247,11 +375,15 @@ window.RollerConfig = {
       span.textContent = color.label;
 
       input.addEventListener('change', () => {
-        this.state.color = input.value;
+        this.state.color = color.id;
         this.calculatePrice();
+        if (this.state.endleiste.color === 'match') {
+          this.renderEndleistColorOptions();
+        }
+        this.updateRollerImage();
         this.saveToStorage();
         this.render();
-        console.log('[RollerConfig] Color changed to:', input.value);
+        console.log('[RollerConfig] Color changed to:', color.id);
       });
 
       label.appendChild(input);
@@ -265,6 +397,17 @@ window.RollerConfig = {
     const container = document.getElementById('endleiste-color-options');
     container.innerHTML = '';
 
+    const colorIds = Object.keys(this.endleistColors);
+    
+    if (colorIds.length === 0) {
+      container.innerHTML = '<p>Keine Farben verfügbar</p>';
+      return;
+    }
+
+    if (!this.endleistColors[this.state.endleiste.color]) {
+      this.state.endleiste.color = colorIds[0];
+    }
+
     Object.entries(this.endleistColors).forEach(([key, color]) => {
       const label = document.createElement('label');
       label.className = 'color-option';
@@ -277,7 +420,7 @@ window.RollerConfig = {
 
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
-      swatch.style.backgroundColor = key === 'match' ? '#999' : color.hex;
+      swatch.style.backgroundColor = color.hex;
 
       const span = document.createElement('span');
       span.textContent = color.label;
@@ -294,6 +437,13 @@ window.RollerConfig = {
       label.appendChild(span);
       container.appendChild(label);
     });
+  },
+
+  updateRollerImage() {
+    const filename = `roller-${this.state.profile}-${this.state.color}.png`;
+    const imageUrl = this.assetBaseUrl + filename;
+    document.getElementById('roller-image').src = imageUrl;
+    console.log('[RollerConfig] Updated image to:', imageUrl);
   },
 
   render() {
@@ -327,12 +477,8 @@ window.RollerConfig = {
         document.querySelector(`input[name="profile"][value="${this.state.profile}"]`).checked = true;
         document.getElementById('width').value = this.state.width;
         document.getElementById('height').value = this.state.height;
-
-        if (this.state.endleiste.enabled) {
-          document.getElementById('endleiste-enabled').checked = true;
-          document.getElementById('endleiste-options').classList.add('active');
-          document.getElementById('endleiste-holes').checked = this.state.endleiste.holes;
-        }
+        document.getElementById('quantity').value = this.state.quantity;
+        document.getElementById('endleiste-holes').checked = this.state.endleiste.holes;
 
         console.log('[RollerConfig] Loaded from storage:', this.state);
       }
@@ -342,18 +488,10 @@ window.RollerConfig = {
   },
 
   getVariantId() {
-    const key = `${this.state.material}_${this.state.profile}_${this.state.color}`;
-    const variantMap = {
-      'alu_mini_standard': 'ROLLER-ALU-MINI-STD',
-      'alu_mini_special': 'ROLLER-ALU-MINI-SPL',
-      'alu_maxi_standard': 'ROLLER-ALU-MAXI-STD',
-      'alu_maxi_special': 'ROLLER-ALU-MAXI-SPL',
-      'pvc_mini_standard': 'ROLLER-PVC-MINI-STD',
-      'pvc_mini_special': 'ROLLER-PVC-MINI-SPL',
-      'pvc_maxi_standard': 'ROLLER-PVC-MAXI-STD',
-      'pvc_maxi_special': 'ROLLER-PVC-MAXI-SPL'
-    };
-    return variantMap[key];
+    const colorType = this.isSpecialColor(this.state.color) ? 'SPL' : 'STD';
+    const materialUpper = this.state.material.toUpperCase();
+    const profileUpper = this.state.profile === 'mini' ? 'MINI' : 'MAXI';
+    return `ROLLER-${materialUpper}-${profileUpper}-${colorType}`;
   },
 
   addToCart() {
@@ -367,18 +505,28 @@ window.RollerConfig = {
     const variantId = this.getVariantId();
     console.log('[RollerConfig] Using variant:', variantId);
 
+    const key = `${this.state.material}_${this.state.profile}`;
+    const colorObj = this.colorOptions[key]?.find(c => c.id === this.state.color);
+    const colorLabel = colorObj?.label || this.state.color;
+
+    let endleistColorLabel = this.state.endleiste.color;
+    if (this.state.endleiste.color === 'match') {
+      endleistColorLabel = colorLabel + ' (Abgestimmt)';
+    } else if (this.endleistColors[this.state.endleiste.color]) {
+      endleistColorLabel = this.endleistColors[this.state.endleiste.color].label;
+    }
+
     const cartItem = {
       variantId: variantId,
-      quantity: 1,
+      quantity: this.state.quantity,
       properties: {
         'Width (mm)': this.state.width,
         'Height (mm)': this.state.height,
         'Material': this.state.material === 'alu' ? 'Aluminium' : 'PVC',
         'Profile': this.state.profile === 'mini' ? 'Mini (37mm)' : 'Maxi (52mm)',
-        'Color': this.state.color === 'standard' ? 'Standard' : 'Special',
+        'Color': colorLabel,
         'Area (m2)': this.state.area.toFixed(3),
-        'Endleiste_Enabled': this.state.endleiste.enabled ? 'Yes' : 'No',
-        'Endleiste_Color': this.state.endleiste.color,
+        'Endleiste_Color': endleistColorLabel,
         'Endleiste_Holes': this.state.endleiste.holes ? 'Yes' : 'No'
       }
     };
@@ -406,6 +554,144 @@ window.RollerConfig = {
   }
 };
 
+window.RegistrationForm = {
+  countryFields: {
+    de: {
+      label: 'Deutschland',
+      fields: [
+        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
+        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 10115', pattern: '^[0-9]{5}$' },
+        { id: 'city', label: 'Stadt', type: 'text', placeholder: 'z.B. Berlin' }
+      ]
+    },
+    at: {
+      label: 'Österreich',
+      fields: [
+        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
+        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 1010', pattern: '^[0-9]{4}$' },
+        { id: 'city', label: 'Stadt', type: 'text', placeholder: 'z.B. Wien' }
+      ]
+    },
+    ch: {
+      label: 'Schweiz',
+      fields: [
+        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
+        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 8000', pattern: '^[0-9]{4}$' },
+        { id: 'city', label: 'Ort', type: 'text', placeholder: 'z.B. Zürich' }
+      ]
+    },
+    li: {
+      label: 'Liechtenstein',
+      fields: [
+        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
+        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 9490', pattern: '^[0-9]{4}$' },
+        { id: 'city', label: 'Ort', type: 'text', placeholder: 'z.B. Schaan' }
+      ]
+    }
+  },
+
+  init() {
+    const toggle = document.querySelector('.registration-toggle');
+    const countrySelect = document.getElementById('customer-country');
+    
+    if (toggle) {
+      toggle.addEventListener('click', () => this.toggleForm());
+    }
+    
+    if (countrySelect) {
+      countrySelect.addEventListener('change', () => this.renderAddressFields());
+    }
+  },
+
+  toggleForm() {
+    const container = document.getElementById('registration-form-container');
+    const toggle = document.querySelector('.registration-toggle');
+    
+    if (container.style.display === 'none') {
+      container.style.display = 'block';
+      toggle.classList.add('active');
+    } else {
+      container.style.display = 'none';
+      toggle.classList.remove('active');
+    }
+  },
+
+  renderAddressFields() {
+    const country = document.getElementById('customer-country').value;
+    const addressFieldsContainer = document.getElementById('address-fields');
+    
+    if (!country) {
+      addressFieldsContainer.innerHTML = '';
+      return;
+    }
+    
+    const countryConfig = this.countryFields[country];
+    let html = '';
+    
+    countryConfig.fields.forEach(field => {
+      html += `
+        <div class="form-group">
+          <label for="${field.id}">${field.label}</label>
+          <input 
+            type="${field.type}" 
+            id="${field.id}" 
+            name="${field.id}" 
+            placeholder="${field.placeholder}"
+            ${field.pattern ? `pattern="${field.pattern}"` : ''}
+            required>
+        </div>
+      `;
+    });
+    
+    addressFieldsContainer.innerHTML = html;
+  },
+
+  getFormData() {
+    const country = document.getElementById('customer-country').value;
+    if (!country) return null;
+    
+    const data = {
+      country: country,
+      company: document.getElementById('company-name').value,
+      contact: document.getElementById('contact-person').value,
+      email: document.getElementById('customer-email').value,
+      phone: document.getElementById('customer-phone').value,
+      projectCode: document.getElementById('project-code').value
+    };
+    
+    const countryConfig = this.countryFields[country];
+    countryConfig.fields.forEach(field => {
+      data[field.id] = document.getElementById(field.id).value;
+    });
+    
+    return data;
+  }
+};
+
+window.MeasurementInstructions = {
+  init() {
+    const toggle = document.querySelector('.instructions-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => this.toggleInstructions());
+    }
+  },
+
+  toggleInstructions() {
+    const container = document.getElementById('instructions-container');
+    const toggle = document.querySelector('.instructions-toggle');
+    
+    if (container.style.display === 'none') {
+      container.style.display = 'block';
+      toggle.classList.add('active');
+    } else {
+      container.style.display = 'none';
+      toggle.classList.remove('active');
+    }
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   RollerConfig.init();
+  RegistrationForm.init();
+  MeasurementInstructions.init();
 });
