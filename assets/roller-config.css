@@ -804,6 +804,31 @@
   }
 }
 
+.video-container {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-lighter);
+  position: relative;
+}
+
+#measurement-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.video-note {
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-light);
+  border-top: 1px solid var(--border-color);
+  margin: 0;
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   * {

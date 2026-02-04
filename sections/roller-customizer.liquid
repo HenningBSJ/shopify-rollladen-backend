@@ -5,65 +5,6 @@
 <div class="roller-customizer" id="customizer-content" style="display: none;">
   <h2>Rollladen nach Maß konfigurieren</h2>
 
-  <!-- Registration Section (Collapsible) -->
-  <div class="registration-section">
-    <button type="button" class="registration-toggle">
-      <span>📋 Geschäftskundendaten</span>
-      <span class="toggle-icon">▼</span>
-    </button>
-    
-    <div class="registration-form-container" id="registration-form-container" style="display: none;">
-      <h3>Geschäftskundenkonto</h3>
-      
-      <!-- Country Selector -->
-      <div class="form-group">
-        <label for="customer-country">Land</label>
-        <select id="customer-country" name="country" required>
-          <option value="">-- Wählen Sie Ihr Land --</option>
-          <option value="de">Deutschland (DE)</option>
-          <option value="at">Österreich (AT)</option>
-          <option value="ch">Schweiz (CH)</option>
-          <option value="li">Liechtenstein (LI)</option>
-        </select>
-      </div>
-
-      <!-- Company Information -->
-      <div class="form-group">
-        <label for="company-name">Unternehmen</label>
-        <input type="text" id="company-name" name="company-name" placeholder="Unternehmensname" required>
-      </div>
-
-      <!-- Contact Person -->
-      <div class="form-group">
-        <label for="contact-person">Ansprechpartner</label>
-        <input type="text" id="contact-person" name="contact-person" placeholder="Vor- und Nachname" required>
-      </div>
-
-      <!-- Contact Information -->
-      <div class="form-row">
-        <div class="form-group flex-1">
-          <label for="customer-email">E-Mail</label>
-          <input type="email" id="customer-email" name="customer-email" placeholder="info@example.de" required>
-        </div>
-        <div class="form-group flex-1">
-          <label for="customer-phone">Telefon</label>
-          <input type="tel" id="customer-phone" name="customer-phone" placeholder="+49 123 456789" required>
-        </div>
-      </div>
-
-      <!-- Address Fields -->
-      <div id="address-fields">
-        <!-- Dynamic address fields based on country -->
-      </div>
-
-      <!-- Project Code -->
-      <div class="form-group">
-        <label for="project-code">Projektcode (optional)</label>
-        <input type="text" id="project-code" name="project-code" placeholder="z.B. PRJ-2024-001">
-      </div>
-    </div>
-  </div>
-
   <!-- Measurement Instructions Section (Collapsible) -->
   <div class="instructions-section">
     <button type="button" class="instructions-toggle">
@@ -167,6 +108,9 @@
           </div>
           <div class="area-display">
             Fläche: <span id="area-display">0.000</span> m²
+            <span id="chargeable-area-wrapper" style="display: none;">
+              (Berechnet: <span id="chargeable-area-display">1.000</span> m²)
+            </span>
           </div>
         </div>
       </div>

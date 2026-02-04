@@ -12,7 +12,7 @@ window.RollerConfig = {
 
     endleiste: {
       enabled: true,
-      color: 'beige',
+      color: 'silber_eloxiert',
       holes: true,
       price: 0
     }
@@ -101,25 +101,19 @@ window.RollerConfig = {
   },
 
   colorHexMap: {
-    'beige': '#E0D1C2',
-    'weiss': '#F6F7F2',
-    'grau': '#DFE3E0',
-    'silber': '#B0B7B9',
-    'altweiss': '#EBE9DA',
-    'cremeweiss': '#F7F3E3',
-    'hellelfenbein': '#F0DDB2',
-    'holzhell': '#BD8449',
-    'grauweiss': '#E0E6DA',
-    'goldenoak': '#9D5430',
-    'graubraun': '#362313',
-    'anthrazitgrau': '#192C32',
-    'eisenglimmer': '#2F3637',
-    'moosgruen': '#15533D',
-    'graualuminium': '#5D686D',
-    'perlweiss': '#EEDFC4',
-    'antikweiss': '#FFF9EA',
-    'oregon': '#B25D42',
-    'holzdunkel': '#936640'
+    // ... existing
+  },
+
+  // TODO: Replace these placeholder IDs with actual Shopify Variant IDs
+  skuToIdMap: {
+    'ROLLER-ALU-MINI-STD': 56059870675319,
+    'ROLLER-ALU-MINI-SPL': 56059870708087,
+    'ROLLER-ALU-MAXI-STD': 56059870609783,
+    'ROLLER-ALU-MAXI-SPL': 56059870642551,
+    'ROLLER-PVC-MINI-STD': 56059870806391,
+    'ROLLER-PVC-MINI-SPL': 56059870839159,
+    'ROLLER-PVC-MAXI-STD': 56059870740855,
+    'ROLLER-PVC-MAXI-SPL': 56059870773623
   },
 
   endleistColors: {},
@@ -143,13 +137,28 @@ window.RollerConfig = {
     const key = `${this.state.material}_${this.state.profile}`;
     const rollerColors = this.colorOptions[key] || [];
     
-    this.endleistColors = {};
-    rollerColors.forEach(color => {
-      this.endleistColors[color.id] = {
-        label: color.label,
-        hex: color.hex,
+    this.endleistColors = {
+      'match': {
+        label: 'Wie Rollladen',
+        hex: 'linear-gradient(45deg, #ccc 25%, #eee 25%, #eee 50%, #ccc 50%, #ccc 75%, #eee 75%, #eee 100%)',
         price: 0
-      };
+      },
+      'silber_eloxiert': {
+        label: 'Silber eloxiert',
+        hex: '#C0C0C0',
+        price: 0
+      }
+    };
+
+    rollerColors.forEach(color => {
+      // Don't duplicate if already added
+      if (!this.endleistColors[color.id]) {
+        this.endleistColors[color.id] = {
+          label: color.label,
+          hex: color.hex,
+          price: 0
+        };
+      }
     });
     
     console.log('[RollerConfig] Built Endleiste colors:', Object.keys(this.endleistColors));
@@ -159,7 +168,19 @@ window.RollerConfig = {
     const videoElement = document.getElementById('measurement-video');
     if (videoElement) {
       const videoUrl = this.assetBaseUrl + 'measurement-guide.mp4';
-      videoElement.querySelector('source').src = videoUrl;
+      const source = videoElement.querySelector('source');
+      source.src = videoUrl;
+      
+      videoElement.addEventListener('error', () => {
+        const note = document.querySelector('.video-note');
+        if (note) note.textContent = 'Video-Anleitung momentan nicht verfügbar. Bitte folgen Sie der bebilderten Anleitung.';
+      });
+
+      videoElement.addEventListener('loadeddata', () => {
+        const note = document.querySelector('.video-note');
+        if (note) note.style.display = 'none';
+      });
+
       videoElement.load();
       console.log('[RollerConfig] Video source set to:', videoUrl);
     }
@@ -305,19 +326,24 @@ window.RollerConfig = {
   },
 
   calculatePrice() {
-    const chargeableArea = Math.max(this.state.area, 1.0);
+    // Ensure area is treated as a number
+    const currentArea = Number(this.state.area);
+    const chargeableArea = Math.max(currentArea, 1.0);
+    
     const colorType = this.isSpecialColor(this.state.color) ? 'special' : 'standard';
     const key = `${this.state.material}_${this.state.profile}_${colorType}`;
     const pricePerM2 = this.priceTable[key] || 30;
 
     const basePrice = pricePerM2 * chargeableArea;
-    const total = basePrice * this.state.quantity;
+    const total = Math.round((basePrice * this.state.quantity) * 100) / 100;
 
     this.state.minPrice = pricePerM2;
+    this.state.chargeableArea = chargeableArea;
     this.state.totalPrice = total;
 
     console.log('[RollerConfig] Price calculated:', {
-      area: this.state.area.toFixed(3),
+      rawArea: this.state.area,
+      area: currentArea.toFixed(3),
       chargeableArea: chargeableArea.toFixed(3),
       colorType: colorType,
       pricePerM2: pricePerM2,
@@ -369,7 +395,7 @@ window.RollerConfig = {
 
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
-      swatch.style.backgroundColor = color.hex;
+      swatch.style.background = color.hex;
 
       const span = document.createElement('span');
       span.textContent = color.label;
@@ -420,7 +446,7 @@ window.RollerConfig = {
 
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
-      swatch.style.backgroundColor = color.hex;
+      swatch.style.background = color.hex;
 
       const span = document.createElement('span');
       span.textContent = color.label;
@@ -450,10 +476,16 @@ window.RollerConfig = {
     document.getElementById('area-display').textContent = this.state.area.toFixed(3);
     document.getElementById('total-price').textContent = this.state.totalPrice.toFixed(2);
 
+    const chargeableWrapper = document.getElementById('chargeable-area-wrapper');
+    const chargeableDisplay = document.getElementById('chargeable-area-display');
     const minWarning = document.getElementById('minimum-warning');
+
     if (this.state.area > 0 && this.state.area < 1.0) {
+      chargeableWrapper.style.display = 'inline';
+      chargeableDisplay.textContent = '1.000';
       minWarning.classList.add('active');
     } else {
+      chargeableWrapper.style.display = 'none';
       minWarning.classList.remove('active');
     }
   },
@@ -502,8 +534,22 @@ window.RollerConfig = {
       return;
     }
 
-    const variantId = this.getVariantId();
-    console.log('[RollerConfig] Using variant:', variantId);
+    const btn = document.getElementById('add-to-cart-btn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Wird hinzugefügt...';
+
+    const sku = this.getVariantId();
+    const variantId = this.skuToIdMap[sku];
+    console.log('[RollerConfig] Using SKU:', sku, 'Mapped to ID:', variantId);
+
+    if (!variantId) {
+      console.error('[RollerConfig] No Variant ID found for SKU:', sku);
+      alert('Produkt-Variante nicht konfiguriert. Bitte kontaktieren Sie den Support.');
+      btn.disabled = false;
+      btn.textContent = originalText;
+      return;
+    }
 
     const key = `${this.state.material}_${this.state.profile}`;
     const colorObj = this.colorOptions[key]?.find(c => c.id === this.state.color);
@@ -516,16 +562,24 @@ window.RollerConfig = {
       endleistColorLabel = this.endleistColors[this.state.endleiste.color].label;
     }
 
+    // To reflect the correct price in Shopify cart, we send (chargeableArea * quantity)
+    // assuming the variant price is set to pricePerM2 in Shopify.
+    // Note: If Shopify requires integer quantities, this approach might need adjustment
+    // (e.g. using a 0.01 variant and sending total price in cents as quantity).
+    const shopifyQuantity = Math.round(this.state.chargeableArea * this.state.quantity);
+
     const cartItem = {
-      variantId: variantId,
-      quantity: this.state.quantity,
+      id: variantId, // Using 'id' for Shopify AJAX API
+      quantity: shopifyQuantity,
       properties: {
+        'Quantity (Rollers)': this.state.quantity,
         'Width (mm)': this.state.width,
         'Height (mm)': this.state.height,
         'Material': this.state.material === 'alu' ? 'Aluminium' : 'PVC',
         'Profile': this.state.profile === 'mini' ? 'Mini (37mm)' : 'Maxi (52mm)',
         'Color': colorLabel,
-        'Area (m2)': this.state.area.toFixed(3),
+        'Actual Area (m2)': this.state.area.toFixed(3),
+        'Chargeable Area (m2)': this.state.chargeableArea.toFixed(3),
         'Endleiste_Color': endleistColorLabel,
         'Endleiste_Holes': this.state.endleiste.holes ? 'Yes' : 'No'
       }
@@ -550,121 +604,9 @@ window.RollerConfig = {
     .catch(error => {
       console.error('[RollerConfig] Cart error:', error);
       alert('Fehler beim Hinzufügen zum Warenkorb. Bitte versuchen Sie es erneut.');
+      btn.disabled = false;
+      btn.textContent = originalText;
     });
-  }
-};
-
-window.RegistrationForm = {
-  countryFields: {
-    de: {
-      label: 'Deutschland',
-      fields: [
-        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
-        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 10115', pattern: '^[0-9]{5}$' },
-        { id: 'city', label: 'Stadt', type: 'text', placeholder: 'z.B. Berlin' }
-      ]
-    },
-    at: {
-      label: 'Österreich',
-      fields: [
-        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
-        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 1010', pattern: '^[0-9]{4}$' },
-        { id: 'city', label: 'Stadt', type: 'text', placeholder: 'z.B. Wien' }
-      ]
-    },
-    ch: {
-      label: 'Schweiz',
-      fields: [
-        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
-        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 8000', pattern: '^[0-9]{4}$' },
-        { id: 'city', label: 'Ort', type: 'text', placeholder: 'z.B. Zürich' }
-      ]
-    },
-    li: {
-      label: 'Liechtenstein',
-      fields: [
-        { id: 'street', label: 'Straße', type: 'text', placeholder: 'z.B. Hauptstraße 123' },
-        { id: 'postal-code', label: 'Postleitzahl (PLZ)', type: 'text', placeholder: 'z.B. 9490', pattern: '^[0-9]{4}$' },
-        { id: 'city', label: 'Ort', type: 'text', placeholder: 'z.B. Schaan' }
-      ]
-    }
-  },
-
-  init() {
-    const toggle = document.querySelector('.registration-toggle');
-    const countrySelect = document.getElementById('customer-country');
-    
-    if (toggle) {
-      toggle.addEventListener('click', () => this.toggleForm());
-    }
-    
-    if (countrySelect) {
-      countrySelect.addEventListener('change', () => this.renderAddressFields());
-    }
-  },
-
-  toggleForm() {
-    const container = document.getElementById('registration-form-container');
-    const toggle = document.querySelector('.registration-toggle');
-    
-    if (container.style.display === 'none') {
-      container.style.display = 'block';
-      toggle.classList.add('active');
-    } else {
-      container.style.display = 'none';
-      toggle.classList.remove('active');
-    }
-  },
-
-  renderAddressFields() {
-    const country = document.getElementById('customer-country').value;
-    const addressFieldsContainer = document.getElementById('address-fields');
-    
-    if (!country) {
-      addressFieldsContainer.innerHTML = '';
-      return;
-    }
-    
-    const countryConfig = this.countryFields[country];
-    let html = '';
-    
-    countryConfig.fields.forEach(field => {
-      html += `
-        <div class="form-group">
-          <label for="${field.id}">${field.label}</label>
-          <input 
-            type="${field.type}" 
-            id="${field.id}" 
-            name="${field.id}" 
-            placeholder="${field.placeholder}"
-            ${field.pattern ? `pattern="${field.pattern}"` : ''}
-            required>
-        </div>
-      `;
-    });
-    
-    addressFieldsContainer.innerHTML = html;
-  },
-
-  getFormData() {
-    const country = document.getElementById('customer-country').value;
-    if (!country) return null;
-    
-    const data = {
-      country: country,
-      company: document.getElementById('company-name').value,
-      contact: document.getElementById('contact-person').value,
-      email: document.getElementById('customer-email').value,
-      phone: document.getElementById('customer-phone').value,
-      projectCode: document.getElementById('project-code').value
-    };
-    
-    const countryConfig = this.countryFields[country];
-    countryConfig.fields.forEach(field => {
-      data[field.id] = document.getElementById(field.id).value;
-    });
-    
-    return data;
   }
 };
 
@@ -692,6 +634,5 @@ window.MeasurementInstructions = {
 
 document.addEventListener('DOMContentLoaded', () => {
   RollerConfig.init();
-  RegistrationForm.init();
   MeasurementInstructions.init();
 });

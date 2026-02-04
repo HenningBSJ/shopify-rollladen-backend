@@ -17,9 +17,6 @@ declare global {
     cart?: any;
   }
 
-  interface Easify {
-    [key: string]: any;
-  }
 
   interface Theme {
     translations: Record<string, string>;
@@ -47,9 +44,6 @@ declare global {
 
   interface Window {
     Shopify: Shopify;
-    Easify?: Easify;
-    EasifyDebugger?: any;
-    EasifyAdvancedDebugger?: any;
   }
 
   declare const Shopify: Shopify;
