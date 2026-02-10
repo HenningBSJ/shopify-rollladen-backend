@@ -35,6 +35,19 @@
     assign money_price_max = price_max | money_with_currency
   endif
 
+  if price <= 10
+    assign money_price = 2322 | money
+    assign money_price_min = 2322 | money
+    assign money_price_max = 2322 | money
+    if settings.currency_code_enabled
+      assign money_price = 2322 | money_with_currency
+      assign money_price_min = 2322 | money_with_currency
+      assign money_price_max = 2322 | money_with_currency
+    endif
+    assign money_price = 'ab ' | append: money_price
+    assign money_price_min = 'ab ' | append: money_price_min
+  endif
+
   if target == product and product.price_varies
     assign money_price = 'products.product.price.from_price_html' | t: price: money_price
   endif

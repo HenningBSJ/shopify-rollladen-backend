@@ -134,9 +134,16 @@ window.RollerConfig = {
   - ✅ `assets/roller-config.css` created (300+ LOC)
   - ✅ Syntax validated (Node.js check passed)
   - ✅ All 3 files committed to git (`dawn` branch)
-
-### 🟠 IN PROGRESS
-- [Session 10] Testing integration with product template
+- **[Session 11-13]** Feature Implementation:
+  - ✅ Endleiste (Finishing Bar) fully implemented
+  - ✅ Price calculations verified
+  - ✅ Cart integration completed
+- **[Session 14]** UX & Polish:
+  - ✅ Tooltips added for "Material", "Profilhöhe", "Colours", "Endleiste"
+  - ✅ Layout enhanced (larger fonts/inputs on right side)
+  - ✅ Measuring instructions relocated and corrected
+  - ✅ Spelling fixes ("stabiles")
+  - ✅ Deployment to live theme completed
 
 ### 📋 TODO (Order of Priority)
 
@@ -152,22 +159,29 @@ window.RollerConfig = {
 1. ✅ Add Endleiste toggle UI (implemented in Liquid)
 2. ✅ Implement color picker (silber, match, custom) (implemented in JS)
 3. ✅ Add holes/stoppers toggle (implemented in Liquid)
-4. ⏳ Implement motor integration (disable holes if motor) - Depends on product data
+4. ✅ Implement motor integration (disable holes if motor)
 5. ✅ Calculate Endleiste pricing (€12.50 in calculation)
 
 **Phase 3: Polish & Testing (Day 3-4)**
-1. Responsive design testing (mobile, tablet, desktop)
-2. Test all 8 MPC combinations with pricing
-3. Test persistence across page reloads
-4. Test cart integration and checkout
-5. Browser compatibility (Chrome, Safari, Firefox)
-6. Performance optimization
+1. ✅ Responsive design testing (mobile, tablet, desktop)
+2. ✅ Test all 8 MPC combinations with pricing
+3. ✅ Test persistence across page reloads
+4. ✅ Test cart integration and checkout
+5. ✅ Browser compatibility (Chrome, Safari, Firefox)
+6. ✅ Performance optimization
 
-**Phase 4: Deployment (Optional)**
-1. Push to production theme
-2. Monitor for errors (Sentry/LogRocket optional)
-3. A/B test with Shopify app
-4. Gather user feedback
+**Phase 4: Deployment & Post-Launch**
+1. ✅ Push to production theme
+2. ✅ Monitor for errors (Sentry/LogRocket optional)
+3. ✅ Disable conflicting apps (Easify, Aircada, Live Product Options)
+4. 📋 Gather user feedback
+
+**Phase 5: Recent UX Enhancements (Session 14)**
+1. ✅ Implement CSS Tooltips with placeholder images
+2. ✅ Increase font size and form element spacing
+3. ✅ Relocate Measuring Instructions to collapsible link
+4. ✅ Correct text content (Remove "rounding" step, fix spelling)
+
 
 ---
 

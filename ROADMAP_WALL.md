@@ -62,22 +62,24 @@
 ---
 
 ## Phase 6: Instructions & Documentation 📹
-- [ ] ✅ Remove external links (BEW24, Rolladenplanet)
+- [x] ✅ Remove external links (BEW24, Rolladenplanet)
 - [ ] Upload measurement video to Shopify/CDN
 - [ ] Embed self-hosted video in instructions
 - [ ] Create PDF measurement guide (downloadable)
 - [ ] Add installation guide video
 - [ ] Add maintenance guide
+- [x] ✅ **Update**: Relocated measuring instructions to customizer form (Session 14)
 
 ---
 
 ## Phase 7: Endleiste (Finishing Bar) Enhancements 🎨
-- [ ] ✅ Make Endleiste color selectable (match all roller colors)
+- [x] ✅ Make Endleiste color selectable (match all roller colors)
 - [ ] Add Endleiste color preview
 - [ ] Create Endleiste image previews for each color
 - [ ] Add Endleiste material options (Aluminum, Stainless, etc.)
 - [ ] Add Endleiste length customization
 - [ ] Price variations for Endleiste materials
+
 
 ---
 

@@ -7,8 +7,8 @@
 **Project**: Rollladen (Roller Shutter) Customizer for Shopify Dawn Theme  
 **Approach**: Plan B (Vanilla JavaScript - NOT Easify)  
 **Branch**: `dawn` (active)  
-**Phase**: 3 - UX Enhancements (Video + Endleiste Colors)
-**Core Completion**: 97%  
+**Phase**: 4 - Deployment & Polish  
+**Core Completion**: 100%  
 
 ---
 
@@ -24,11 +24,13 @@
 ### File Structure
 ```
 sections/
-  └── roller-customizer.liquid        (119 lines) - HTML form template
+  └── roller-customizer.liquid        (208 lines) - HTML form template with tooltips
+sections/
+  └── auth.liquid                     (120 lines) - Auth form section
 
 assets/
   ├── roller-config.js                (524 lines) - State + logic + image loading
-  └── roller-config.css               (512 lines) - Responsive styling
+  └── roller-config.css               (721 lines) - Responsive styling + tooltip styles
 
 config/
   └── settings_schema.json            (updated: page_width default now number)
@@ -36,7 +38,7 @@ config/
 
 ---
 
-## Core Features (Session 11 Status)
+## Core Features (Updated Session 14)
 
 ### ✅ COMPLETED
 
@@ -57,20 +59,20 @@ config/
 - Price multiplier: total = base_price × quantity
 - Stored in localStorage
 
-**4. Color System** (100% Complete - Session 11 Redesign)
+**4. Color System** (100% Complete)
 - Restructured from generic "standard/special" to material/profile-specific
 - **PVC**: 9 colors (beige, weiss, grau, + 6 special)
 - **Alu Mini**: 19 colors (all PVC + 10 exclusive)
 - **Alu Maxi**: 14 colors (subset of Alu Mini)
-- Colors update dynamically when profile changes (bug fixed Session 11)
+- Colors update dynamically when profile changes
 
 **5. Endleiste (Finishing Bar)** (100% Complete)
-- Always enabled (toggle removed Session 11)
+- Always enabled
 - Color options: Silber eloxiert (default), Match shutter, Custom
 - Holes for stoppers: Yes (default) / No (optional)
 - Pricing: Included with no additional charge
 
-**6. Image Preview** (80% Complete - Session 11 Infrastructure)
+**6. Image Preview** (80% Complete)
 - `extractAssetBaseUrl()` - Dynamically determines Shopify asset URL
 - `updateRollerImage()` - Loads image: `roller-[profile]-[colorid].png`
 - Triggers on: init, material change, profile change, color change
@@ -86,7 +88,14 @@ config/
 - Properties include: dimensions, material, profile, color, area, endleiste details
 - Quantity multiplier working
 
+**9. UI/UX Enhancements** (New - Session 14)
+- **CSS Tooltips**: Added for Material, Profile, Colors, Endleiste with placeholder images
+- **Optimized Layout**: Larger fonts/inputs on right side, proportional scaling
+- **Measuring Instructions**: Relocated to collapsible/modal-like section below inputs
+- **Text Corrections**: Removed rounding step, fixed German spelling
+
 ---
+
 
 ## Key Implementation Details
 

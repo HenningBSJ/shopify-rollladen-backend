@@ -1,7 +1,7 @@
 {
   "sections": {
     "auth": {
-      "type": "auth",
+      "type": "auth-page",
       "settings": {}
     }
   },

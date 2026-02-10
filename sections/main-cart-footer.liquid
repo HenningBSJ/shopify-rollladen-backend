@@ -58,9 +58,23 @@
                   {%- endif -%}
                 </div>
 
-                <div class="totals">
-                  <h2 class="totals__total">{{ 'sections.cart.estimated_total' | t }}</h2>
-                  <p class="totals__total-value">{{ cart.total_price | money_with_currency }}</p>
+                <div class="totals" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                  {%- assign gross_price = cart.total_price -%}
+                  {%- assign net_price = gross_price | times: 100 | divided_by: 119 -%}
+                  {%- assign tax_amount = gross_price | minus: net_price -%}
+
+                  <div class="totals__subtotal" style="font-size: 1.3rem;">
+                    <span class="label">Netto:</span>
+                    <span class="value">{{ net_price | money }}</span>
+                  </div>
+                  <div class="totals__tax" style="font-size: 1.3rem; color: rgba(var(--color-foreground), 0.75);">
+                    <span class="label">USt (19%):</span>
+                    <span class="value">{{ tax_amount | money }}</span>
+                  </div>
+                  <div class="totals__total" style="font-size: 1.8rem; font-weight: bold; margin-top: 0.5rem;">
+                    <span class="label">Summe (inkl. USt.):</span>
+                    <span class="value">{{ gross_price | money }}</span>
+                  </div>
                 </div>
 
                 <small class="tax-note caption-large rte">

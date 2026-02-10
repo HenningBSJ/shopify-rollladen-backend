@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "main": {
+      "type": "roller-customizer",
+      "settings": {}
+    }
+  },
+  "order": ["main"]
+}
