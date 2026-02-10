@@ -39,7 +39,9 @@
     assign money_price = 'products.product.price.from_price_html' | t: price: money_price
   endif
 
+  assign suppress_price = false
   if price < 100
+    assign suppress_price = true
     assign money_price = 2322 | money
     assign money_price_min = 2322 | money
     assign money_price_max = 2322 | money
@@ -64,6 +66,7 @@
       {%- if product.price_varies == false and product.compare_at_price_varies %} price--no-compare{% endif -%}
       {%- if show_badges %} price--show-badge{% endif -%}
     "
+    {% if suppress_price %}style="display: none !important;"{% endif %}
   >
     <div class="price__container">
       {%- comment -%}
