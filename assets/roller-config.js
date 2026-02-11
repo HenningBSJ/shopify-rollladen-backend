@@ -495,8 +495,7 @@ window.RollerConfig = {
       }
     });
 
-    // Helper to render a group of colors
-    const renderGroup = (groupColors, title) => {
+      const renderGroup = (groupColors, title) => {
       if (groupColors.length === 0) return;
 
       const groupContainer = document.createElement('div');
@@ -526,9 +525,30 @@ window.RollerConfig = {
 
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
-        swatch.style.backgroundColor = color.hex;
+        
+        // Robust style application
+        swatch.style.width = '40px';
+        swatch.style.height = '40px';
+        swatch.style.minWidth = '40px';
+        swatch.style.minHeight = '40px';
+        swatch.style.borderRadius = '50%';
+        swatch.style.border = '2px solid #666';
+        swatch.style.flexShrink = '0';
+        swatch.style.marginRight = '10px';
+        swatch.style.display = 'block';
+        
+        // Force background color
+        if (color.hex) {
+            swatch.style.setProperty('background-color', color.hex, 'important');
+        } else {
+            console.warn('[RollerConfig] Missing hex for color:', color.id);
+            swatch.style.backgroundColor = '#ccc';
+        }
+
         if (isWood) {
           swatch.style.backgroundImage = woodGradient;
+        } else {
+          swatch.style.backgroundImage = 'none';
         }
 
         const span = document.createElement('span');
@@ -578,6 +598,10 @@ window.RollerConfig = {
       this.state.endleiste.color = colorIds[0];
     }
 
+    // Use a grid layout for single row/wrapping
+    const grid = document.createElement('div');
+    grid.className = 'color-grid';
+
     Object.entries(this.endleistColors).forEach(([key, color]) => {
       const label = document.createElement('label');
       label.className = 'color-option';
@@ -590,10 +614,30 @@ window.RollerConfig = {
 
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
-      swatch.style.background = color.hex;
+      
+      // Robust style application
+      swatch.style.width = '40px';
+      swatch.style.height = '40px';
+      swatch.style.minWidth = '40px';
+      swatch.style.minHeight = '40px';
+      swatch.style.borderRadius = '50%';
+      swatch.style.border = '2px solid #666';
+      swatch.style.flexShrink = '0';
+      swatch.style.marginRight = '10px';
+      swatch.style.display = 'block';
+      swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+      swatch.style.backgroundImage = 'none';
+
+      // Force background color
+      if (color.hex) {
+          swatch.style.setProperty('background-color', color.hex, 'important');
+      } else {
+          console.warn('[RollerConfig] Missing hex for endleiste color:', key);
+          swatch.style.backgroundColor = '#ccc';
+      }
 
       const span = document.createElement('span');
-      span.innerHTML = `${color.label} <span style="display: block; width: 60px; height: 15px; background-color: ${color.hex}; margin-top: 5px; border: 1px solid #ccc;" title="${color.hex}"></span>`;
+      span.innerHTML = `<span style="display: block; font-weight: 500;">${color.label}</span>`;
 
       input.addEventListener('change', () => {
         this.state.endleiste.color = key;
@@ -605,8 +649,10 @@ window.RollerConfig = {
       label.appendChild(input);
       label.appendChild(swatch);
       label.appendChild(span);
-      container.appendChild(label);
+      grid.appendChild(label);
     });
+
+    container.appendChild(grid);
   },
 
   updateRollerImage() {

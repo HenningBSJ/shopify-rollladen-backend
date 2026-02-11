@@ -185,15 +185,26 @@
   transform: translateY(-1px);
 }
 
+.color-group {
+  margin-bottom: 2rem;
+}
+
+.color-group:last-child {
+  margin-bottom: 0;
+}
+
 .color-swatch {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%; /* Circle shape as requested/implied by "disappeared" comment usually referring to circular swatches */
-  border: 1px solid rgba(0,0,0,0.1);
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50%; /* Circle shape */
+  border: 2px solid #666 !important; /* Visible border */
   flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   background-position: center;
   background-size: cover;
+  display: block !important; /* Ensure it's not hidden */
+  min-width: 40px !important; /* Force size */
+  background-color: #eee; /* Fallback color */
 }
 
 /* Endleiste Section */
