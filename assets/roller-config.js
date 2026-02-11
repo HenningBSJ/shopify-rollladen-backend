@@ -483,48 +483,84 @@ window.RollerConfig = {
     const key = `${this.state.material}_${this.state.profile}`;
     const colors = this.colorOptions[key] || [];
 
+    // Separate colors into standard and special
+    const standardColors = [];
+    const specialColors = [];
+
     colors.forEach(color => {
-      const label = document.createElement('label');
-      label.className = 'color-option';
-
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.name = 'color';
-      input.value = color.id;
-      input.checked = color.id === this.state.color;
-
-      const woodColors = ['holzhell', 'goldenoak', 'oregon', 'holzdunkel'];
-      const isWood = woodColors.includes(color.id);
-      const woodGradient = 'repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 4px)';
-
-      const swatch = document.createElement('div');
-      swatch.className = 'color-swatch';
-      swatch.style.backgroundColor = color.hex;
-      if (isWood) {
-        swatch.style.backgroundImage = woodGradient;
+      if (this.isSpecialColor(color.id)) {
+        specialColors.push(color);
+      } else {
+        standardColors.push(color);
       }
+    });
 
-      const span = document.createElement('span');
-      // Removed secondary preview bar as main swatch is now larger
-      span.innerHTML = `<span style="display: block; font-weight: 500; font-size: 1.1rem;">${color.label}</span>`;
+    // Helper to render a group of colors
+    const renderGroup = (groupColors, title) => {
+      if (groupColors.length === 0) return;
 
-      input.addEventListener('change', () => {
-        this.state.color = color.id;
-        this.calculatePrice();
-        if (this.state.endleiste.color === 'match') {
-          this.renderEndleistColorOptions();
+      const groupContainer = document.createElement('div');
+      groupContainer.className = 'color-group';
+      
+      const heading = document.createElement('h4');
+      heading.textContent = title;
+      heading.className = 'color-group-heading';
+      groupContainer.appendChild(heading);
+
+      const grid = document.createElement('div');
+      grid.className = 'color-grid';
+
+      groupColors.forEach(color => {
+        const label = document.createElement('label');
+        label.className = 'color-option';
+
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'color';
+        input.value = color.id;
+        input.checked = color.id === this.state.color;
+
+        const woodColors = ['holzhell', 'goldenoak', 'oregon', 'holzdunkel'];
+        const isWood = woodColors.includes(color.id);
+        const woodGradient = 'repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 4px)';
+
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.style.backgroundColor = color.hex;
+        if (isWood) {
+          swatch.style.backgroundImage = woodGradient;
         }
-        this.updateRollerImage();
-        this.saveToStorage();
-        this.render();
-        console.log('[RollerConfig] Color changed to:', color.id);
+
+        const span = document.createElement('span');
+        span.innerHTML = `<span style="display: block; font-weight: 500; font-size: 1.1rem;">${color.label}</span>`;
+
+        input.addEventListener('change', () => {
+          this.state.color = color.id;
+          this.calculatePrice();
+          if (this.state.endleiste.color === 'match') {
+            this.renderEndleistColorOptions();
+          }
+          this.updateRollerImage();
+          this.saveToStorage();
+          this.render();
+          console.log('[RollerConfig] Color changed to:', color.id);
+        });
+
+        label.appendChild(input);
+        label.appendChild(swatch);
+        label.appendChild(span);
+        grid.appendChild(label);
       });
 
-      label.appendChild(input);
-      label.appendChild(swatch);
-      label.appendChild(span);
-      container.appendChild(label);
-    });
+      groupContainer.appendChild(grid);
+      container.appendChild(groupContainer);
+    };
+
+    // Render Standard Colors
+    renderGroup(standardColors, 'Standardfarben');
+
+    // Render Special Colors
+    renderGroup(specialColors, 'Sonderfarben');
   },
 
   renderEndleistColorOptions() {
