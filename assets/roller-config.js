@@ -521,7 +521,13 @@ window.RollerConfig = {
 
         const woodColors = ['holzhell', 'goldenoak', 'oregon', 'holzdunkel'];
         const isWood = woodColors.includes(color.id);
-        const woodGradient = 'repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 4px)';
+        
+        // Natural wood grain texture using SVG filter (horizontal grain)
+        // baseFrequency="0.005 0.15" creates stretched horizontal lines
+        const woodSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005 0.15' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.35'/%3E%3C/svg%3E";
+        
+        // Combine lighting (3D slat effect) + wood grain texture
+        const woodGradient = `linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.1) 100%), url("${woodSvg}")`;
 
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
