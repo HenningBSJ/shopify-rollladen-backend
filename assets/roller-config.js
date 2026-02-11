@@ -525,27 +525,32 @@ window.RollerConfig = {
 
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
-        swatch.setAttribute('data-color-hex', color.hex); // Debug attribute
+        swatch.setAttribute('data-color-hex', color.hex);
+
+        // Apply styles individually with priority
+        swatch.style.setProperty('width', '40px', 'important');
+        swatch.style.setProperty('height', '40px', 'important');
+        swatch.style.setProperty('min-width', '40px', 'important');
+        swatch.style.setProperty('min-height', '40px', 'important');
+        swatch.style.setProperty('border-radius', '50%', 'important');
+        swatch.style.setProperty('border', '2px solid #666', 'important');
+        swatch.style.setProperty('display', 'block', 'important');
+        swatch.style.setProperty('flex-shrink', '0', 'important');
+        swatch.style.setProperty('margin-right', '10px', 'important');
+        swatch.style.setProperty('box-shadow', '0 2px 4px rgba(0,0,0,0.2)', 'important');
         
-        // Use cssText for guaranteed application of styles including !important
-        // Using background shorthand to ensure no overrides
-        swatch.style.cssText = `
-          width: 40px !important;
-          height: 40px !important;
-          min-width: 40px !important;
-          min-height: 40px !important;
-          background: ${color.hex} !important;
-          border: 2px solid #666 !important;
-          border-radius: 50%;
-          display: block !important;
-          flex-shrink: 0 !important;
-          margin-right: 10px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        `;
-        
-        // Apply wood gradient if needed (overrides background color)
+        // Background color
+        if (color.hex) {
+            swatch.style.setProperty('background-color', color.hex, 'important');
+        } else {
+            swatch.style.setProperty('background-color', '#ccc', 'important');
+        }
+
+        // Wood gradient
         if (isWood) {
-          swatch.style.backgroundImage = woodGradient;
+          swatch.style.setProperty('background-image', woodGradient, 'important');
+        } else {
+          swatch.style.setProperty('background-image', 'none', 'important');
         }
 
         const span = document.createElement('span');
@@ -614,20 +619,24 @@ window.RollerConfig = {
       swatch.className = 'color-swatch';
       swatch.setAttribute('data-color-hex', color.hex);
 
-      // Robust cssText application
-      swatch.style.cssText = `
-        width: 40px !important;
-        height: 40px !important;
-        min-width: 40px !important;
-        min-height: 40px !important;
-        background: ${color.hex} !important;
-        border: 2px solid #666 !important;
-        border-radius: 50%;
-        display: block !important;
-        flex-shrink: 0 !important;
-        margin-right: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      `;
+      // Robust style application
+      swatch.style.setProperty('width', '40px', 'important');
+      swatch.style.setProperty('height', '40px', 'important');
+      swatch.style.setProperty('min-width', '40px', 'important');
+      swatch.style.setProperty('min-height', '40px', 'important');
+      swatch.style.setProperty('border-radius', '50%', 'important');
+      swatch.style.setProperty('border', '2px solid #666', 'important');
+      swatch.style.setProperty('display', 'block', 'important');
+      swatch.style.setProperty('flex-shrink', '0', 'important');
+      swatch.style.setProperty('margin-right', '10px', 'important');
+      swatch.style.setProperty('box-shadow', '0 2px 4px rgba(0,0,0,0.2)', 'important');
+      swatch.style.setProperty('background-image', 'none', 'important');
+
+      if (color.hex) {
+        swatch.style.setProperty('background-color', color.hex, 'important');
+      } else {
+        swatch.style.setProperty('background-color', '#ccc', 'important');
+      }
 
       const span = document.createElement('span');
       span.innerHTML = `<span style="display: block; font-weight: 500;">${color.label}</span>`;

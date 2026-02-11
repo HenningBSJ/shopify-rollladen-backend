@@ -1,4 +1,4 @@
-{{ 'roller-config.css' | asset_url | stylesheet_tag }}
+<link rel="stylesheet" href="{{ 'roller-config.css' | asset_url }}?v={{ 'now' | date: '%s' }}">
 {{ 'auth-config.js' | asset_url | script_tag }}
 
 <div id="auth-guard"></div>
