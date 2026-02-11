@@ -9,6 +9,7 @@
 **Branch**: `dawn` (active)  
 **Phase**: 4 - Deployment & Polish  
 **Core Completion**: 100%  
+**Latest Updates**: Session 15 (Cart Layout & Cleanup)
 
 ---
 
@@ -38,7 +39,7 @@ config/
 
 ---
 
-## Core Features (Updated Session 14)
+## Core Features (Updated Session 15)
 
 ### ✅ COMPLETED
 
@@ -47,6 +48,7 @@ config/
 - 8 combinations with correct €/m² rates
 - Minimum area: 1.0 m² chargeable
 - Calculation: `€{price_per_m2}/m² × max(area, 1.0) m²`
+- **Fixed**: Rounding issues resolved, unit prices displayed correctly
 
 **2. Dimension Validation** (100% Complete)
 - Per-combination constraints enforced
@@ -57,7 +59,7 @@ config/
 - +/− buttons with increment/decrement
 - Direct input field (1-999)
 - Price multiplier: total = base_price × quantity
-- Stored in localStorage
+- **New**: Auto-resets to 1 after "Add to Cart" (persists via bfcache)
 
 **4. Color System** (100% Complete)
 - Restructured from generic "standard/special" to material/profile-specific
@@ -72,7 +74,7 @@ config/
 - Holes for stoppers: Yes (default) / No (optional)
 - Pricing: Included with no additional charge
 
-**6. Image Preview** (80% Complete)
+**6. Image Preview** (100% Complete)
 - `extractAssetBaseUrl()` - Dynamically determines Shopify asset URL
 - `updateRollerImage()` - Loads image: `roller-[profile]-[colorid].png`
 - Triggers on: init, material change, profile change, color change
@@ -87,12 +89,14 @@ config/
 - Sends to `/cart/add.js` with custom line item properties
 - Properties include: dimensions, material, profile, color, area, endleiste details
 - Quantity multiplier working
+- **Refactored**: Cart layout condensed, "Einzelpreis" column removed, wide product column
 
-**9. UI/UX Enhancements** (New - Session 14)
-- **CSS Tooltips**: Added for Material, Profile, Colors, Endleiste with placeholder images
-- **Optimized Layout**: Larger fonts/inputs on right side, proportional scaling
-- **Measuring Instructions**: Relocated to collapsible/modal-like section below inputs
-- **Text Corrections**: Removed rounding step, fixed German spelling
+**9. UI/UX Enhancements** (Session 14-15)
+- **CSS Tooltips**: Added for Material, Profile, Colors, Endleiste
+- **Optimized Layout**: Larger fonts/inputs, proportional scaling
+- **Measuring Instructions**: Relocated to collapsible/modal-like section
+- **Cart Polish**: Consistent layout between Main Cart and Drawer
+- **Clean Theme**: Unused themes deleted
 
 ---
 

@@ -131,6 +131,16 @@ window.RollerConfig = {
     this.calculatePrice();
     this.updateRollerImage();
     this.render();
+    
+    // Handle bfcache (back/forward cache)
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        console.log('[RollerConfig] Page restored from bfcache');
+        this.loadFromStorage();
+        this.render();
+      }
+    });
+
     console.log('[RollerConfig] Ready', this.state);
   },
 
@@ -495,11 +505,8 @@ window.RollerConfig = {
       }
 
       const span = document.createElement('span');
-      let bgStyle = `background-color: ${color.hex};`;
-      if (isWood) {
-        bgStyle += ` background-image: ${woodGradient};`;
-      }
-      span.innerHTML = `${color.label} <span style="display: block; width: 60px; height: 15px; ${bgStyle} margin-top: 5px; border: 1px solid #ccc;" title="${color.hex}"></span>`;
+      // Removed secondary preview bar as main swatch is now larger
+      span.innerHTML = `<span style="display: block; font-weight: 500; font-size: 1.1rem;">${color.label}</span>`;
 
       input.addEventListener('change', () => {
         this.state.color = color.id;

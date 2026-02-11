@@ -392,3 +392,15 @@ curl -X GET https://your-vercel-project.vercel.app/api/addresses \
 - Testing: Pending (Phase 4 final)
 - LexOffice integration: Pending (Phase 4B)
 - Shopify OAuth: Pending (Phase 4D)
+
+## Session History
+
+- **Session 10**: Initial implementation - form, pricing, persistence
+- **Session 11**: Visual enhancement - image integration, color system redesign, bug fixes
+- **Session 12**: Phase 3 UX (responsive layout, registration form, measurement instructions)
+- **Session 13**: Self-hosted video + dynamic Endleiste color selection
+- **Session 15 (Current)**: Cart layout refactoring, pricing display fixes, quantity reset logic, and theme cleanup.
+  - ✅ **Cart**: Condensed layout, 50% product width, removed single price column.
+  - ✅ **Logic**: Quantity resets to 1 (bfcache handled).
+  - ✅ **Display**: Price suppressed on product cards if < 1.00€.
+  - ✅ **Cleanup**: Deleted 7 unused themes.

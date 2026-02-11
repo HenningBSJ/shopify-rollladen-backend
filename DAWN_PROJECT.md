@@ -412,21 +412,42 @@ const interval = setInterval(() => {
   - ✅ Plan B approach confirmed (Vanilla JS)
   - ✅ Initial implementation (sections/roller-customizer.liquid, roller-config.js, roller-config.css)
 
-- **Session 11 (Current)**: Visual Enhancement & Color System Overhaul
+- **Session 11**: Visual Enhancement & Color System Overhaul
   - ✅ Removed native Shopify product form (eliminated duplicate UI confusion)
   - ✅ Made Endleiste permanent feature (default enabled, removed toggle, no separate pricing)
   - ✅ Added professional quantity selector with +/− buttons and price multiplier
   - ✅ Completely restructured color system (material/profile specific: 9 PVC colors, 19 Alu Mini, 14 Alu Maxi)
   - ✅ Fixed critical profile-switching bug (color options now update dynamically on profile change)
   - ✅ Fixed schema validation error (page_width default now number not string)
-  - ✅ Implemented dynamic image loading infrastructure:
-    - Added image preview container to HTML
-    - Created `extractAssetBaseUrl()` to determine Shopify asset URL
-    - Created `updateRollerImage()` to load roller images by profile & color
-    - Images update on init, material change, profile change, and color change
-  - ✅ Documented image naming convention (roller-[profile]-[colorid].png)
-  - ✅ Added responsive CSS styling for image preview (200-400px max-height)
-  - 📋 Next: Phase 2 - Image integration testing and finishing bar images
+  - ✅ Implemented dynamic image loading infrastructure
+
+- **Session 12**: Image integration bug fixes & Phase 3 planning
+  - ✅ Pushed all 33 roller images to Shopify theme
+  - ✅ Fixed `extractAssetBaseUrl()` and color ID naming
+  - ✅ All images now loading (200 OK)
+
+- **Session 13**: Self-hosted video + dynamic Endleiste color selection
+  - ✅ Removed external third-party links from instructions
+  - ✅ Added video player with placeholder for self-hosted video
+  - ✅ Changed Endleiste colors to match roller shutter palette (dynamic)
+
+- **Session 15 (Current)**: Cart Layout, Pricing Fixes & Theme Cleanup
+  - ✅ **Cart Layout Refactoring**:
+    - Condensed rows, reduced whitespace
+    - Widened Product column (50%), Quantity (25%), Total (25%)
+    - Removed redundant "Einzelpreis" column (merged into product details)
+    - Aligned quantity inputs and prices
+  - ✅ **Cart Drawer Alignment**:
+    - Synced layout with main cart for consistency
+  - ✅ **Price Calculation Fixes**:
+    - Fixed rounding issues in `roller-config.js`
+    - Added unit price display to cart properties
+    - Suppressed price on product cards if < 1.00 € (hides base price)
+  - ✅ **Quantity Logic**:
+    - Auto-reset quantity to 1 after "Add to Cart"
+    - Added bfcache handling (persists reset on back navigation)
+  - ✅ **Maintenance**:
+    - Cleaned up unused themes (deleted 7, kept Live + 1 Test)
 
 ---
 
