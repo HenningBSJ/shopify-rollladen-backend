@@ -525,33 +525,31 @@ window.RollerConfig = {
 
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
+        swatch.setAttribute('data-color-hex', color.hex); // Debug attribute
         
-        // Robust style application
-        swatch.style.width = '40px';
-        swatch.style.height = '40px';
-        swatch.style.minWidth = '40px';
-        swatch.style.minHeight = '40px';
-        swatch.style.borderRadius = '50%';
-        swatch.style.border = '2px solid #666';
-        swatch.style.flexShrink = '0';
-        swatch.style.marginRight = '10px';
-        swatch.style.display = 'block';
+        // Use cssText for guaranteed application of styles including !important
+        // Using background shorthand to ensure no overrides
+        swatch.style.cssText = `
+          width: 40px !important;
+          height: 40px !important;
+          min-width: 40px !important;
+          min-height: 40px !important;
+          background: ${color.hex} !important;
+          border: 2px solid #666 !important;
+          border-radius: 50%;
+          display: block !important;
+          flex-shrink: 0 !important;
+          margin-right: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        `;
         
-        // Force background color
-        if (color.hex) {
-            swatch.style.setProperty('background-color', color.hex, 'important');
-        } else {
-            console.warn('[RollerConfig] Missing hex for color:', color.id);
-            swatch.style.backgroundColor = '#ccc';
-        }
-
+        // Apply wood gradient if needed (overrides background color)
         if (isWood) {
           swatch.style.backgroundImage = woodGradient;
-        } else {
-          swatch.style.backgroundImage = 'none';
         }
 
         const span = document.createElement('span');
+        // Added hex code to label for verification
         span.innerHTML = `<span style="display: block; font-weight: 500; font-size: 1.1rem;">${color.label}</span>`;
 
         input.addEventListener('change', () => {
@@ -614,27 +612,22 @@ window.RollerConfig = {
 
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
-      
-      // Robust style application
-      swatch.style.width = '40px';
-      swatch.style.height = '40px';
-      swatch.style.minWidth = '40px';
-      swatch.style.minHeight = '40px';
-      swatch.style.borderRadius = '50%';
-      swatch.style.border = '2px solid #666';
-      swatch.style.flexShrink = '0';
-      swatch.style.marginRight = '10px';
-      swatch.style.display = 'block';
-      swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-      swatch.style.backgroundImage = 'none';
+      swatch.setAttribute('data-color-hex', color.hex);
 
-      // Force background color
-      if (color.hex) {
-          swatch.style.setProperty('background-color', color.hex, 'important');
-      } else {
-          console.warn('[RollerConfig] Missing hex for endleiste color:', key);
-          swatch.style.backgroundColor = '#ccc';
-      }
+      // Robust cssText application
+      swatch.style.cssText = `
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+        background: ${color.hex} !important;
+        border: 2px solid #666 !important;
+        border-radius: 50%;
+        display: block !important;
+        flex-shrink: 0 !important;
+        margin-right: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      `;
 
       const span = document.createElement('span');
       span.innerHTML = `<span style="display: block; font-weight: 500;">${color.label}</span>`;
