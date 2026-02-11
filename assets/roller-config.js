@@ -527,17 +527,18 @@ window.RollerConfig = {
         swatch.className = 'color-swatch';
         swatch.setAttribute('data-color-hex', color.hex);
 
-        // Apply styles individually with priority
-        swatch.style.setProperty('width', '40px', 'important');
+        // Apply styles individually with priority - RECTANGULAR SLAT STYLE
+        swatch.style.setProperty('width', '100%', 'important');
         swatch.style.setProperty('height', '40px', 'important');
-        swatch.style.setProperty('min-width', '40px', 'important');
+        swatch.style.setProperty('min-width', '100%', 'important');
         swatch.style.setProperty('min-height', '40px', 'important');
-        swatch.style.setProperty('border-radius', '50%', 'important');
-        swatch.style.setProperty('border', '2px solid #666', 'important');
+        swatch.style.setProperty('border-radius', '4px', 'important');
+        swatch.style.setProperty('border', '1px solid #999', 'important');
         swatch.style.setProperty('display', 'block', 'important');
         swatch.style.setProperty('flex-shrink', '0', 'important');
-        swatch.style.setProperty('margin-right', '10px', 'important');
-        swatch.style.setProperty('box-shadow', '0 2px 4px rgba(0,0,0,0.2)', 'important');
+        swatch.style.setProperty('margin-right', '0', 'important');
+        swatch.style.setProperty('margin-bottom', '5px', 'important');
+        swatch.style.setProperty('box-shadow', 'inset 0 1px 3px rgba(0,0,0,0.1)', 'important');
         
         // Background color
         if (color.hex) {
@@ -554,8 +555,13 @@ window.RollerConfig = {
         }
 
         const span = document.createElement('span');
-        // Added hex code to label for verification
         span.innerHTML = `<span style="display: block; font-weight: 500; font-size: 1.1rem;">${color.label}</span>`;
+        
+        // Create a row for input and text
+        const row = document.createElement('div');
+        row.className = 'color-option-row';
+        row.appendChild(input);
+        row.appendChild(span);
 
         input.addEventListener('change', () => {
           this.state.color = color.id;
@@ -569,9 +575,9 @@ window.RollerConfig = {
           console.log('[RollerConfig] Color changed to:', color.id);
         });
 
-        label.appendChild(input);
+        // Reorder: Swatch first, then Row (Input + Label)
         label.appendChild(swatch);
-        label.appendChild(span);
+        label.appendChild(row);
         grid.appendChild(label);
       });
 
@@ -620,16 +626,17 @@ window.RollerConfig = {
       swatch.setAttribute('data-color-hex', color.hex);
 
       // Robust style application
-      swatch.style.setProperty('width', '40px', 'important');
+      swatch.style.setProperty('width', '100%', 'important');
       swatch.style.setProperty('height', '40px', 'important');
-      swatch.style.setProperty('min-width', '40px', 'important');
+      swatch.style.setProperty('min-width', '100%', 'important');
       swatch.style.setProperty('min-height', '40px', 'important');
-      swatch.style.setProperty('border-radius', '50%', 'important');
-      swatch.style.setProperty('border', '2px solid #666', 'important');
+      swatch.style.setProperty('border-radius', '4px', 'important');
+      swatch.style.setProperty('border', '1px solid #999', 'important');
       swatch.style.setProperty('display', 'block', 'important');
       swatch.style.setProperty('flex-shrink', '0', 'important');
-      swatch.style.setProperty('margin-right', '10px', 'important');
-      swatch.style.setProperty('box-shadow', '0 2px 4px rgba(0,0,0,0.2)', 'important');
+      swatch.style.setProperty('margin-right', '0', 'important');
+      swatch.style.setProperty('margin-bottom', '5px', 'important');
+      swatch.style.setProperty('box-shadow', 'inset 0 1px 3px rgba(0,0,0,0.1)', 'important');
       swatch.style.setProperty('background-image', 'none', 'important');
 
       if (color.hex) {
@@ -641,6 +648,12 @@ window.RollerConfig = {
       const span = document.createElement('span');
       span.innerHTML = `<span style="display: block; font-weight: 500;">${color.label}</span>`;
 
+      // Create a row for input and text
+      const row = document.createElement('div');
+      row.className = 'color-option-row';
+      row.appendChild(input);
+      row.appendChild(span);
+
       input.addEventListener('change', () => {
         this.state.endleiste.color = key;
         this.saveToStorage();
@@ -648,9 +661,8 @@ window.RollerConfig = {
         console.log('[RollerConfig] Endleiste color changed to:', key);
       });
 
-      label.appendChild(input);
       label.appendChild(swatch);
-      label.appendChild(span);
+      label.appendChild(row);
       grid.appendChild(label);
     });
 

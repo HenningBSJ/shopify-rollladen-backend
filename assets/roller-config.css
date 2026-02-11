@@ -157,14 +157,21 @@
 
 .color-option {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column; /* Stack items vertically */
+  align-items: stretch;   /* Stretch items to full width */
+  gap: 0.5rem;
   padding: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   background: white;
+}
+
+.color-option-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .color-option input[type="radio"] {
