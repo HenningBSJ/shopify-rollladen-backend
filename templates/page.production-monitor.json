@@ -1,0 +1,14 @@
+{
+  "sections": {
+    "main": {
+      "type": "production-monitor",
+      "settings": {
+        "backend_url": "http://192.168.2.158:3006/display",
+        "embed": false
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

@@ -1,0 +1,61 @@
+<div class="page-width">
+  <h1 class="main-page-title page-title h0">{{ page.title | escape }}</h1>
+  {%- if page.content != blank -%}
+    <div class="rte">{{ page.content }}</div>
+  {%- endif -%}
+
+  <div style="margin-top: 18px; padding: 14px; border: 1px solid rgba(0,0,0,.12); border-radius: 12px;">
+    <div style="font-weight: 700; margin-bottom: 8px;">Produktion Monitor</div>
+    <div style="opacity: .85; font-size: 14px; line-height: 1.4;">
+      Link öffnet den Monitor auf dem internen Server. QR-Scans funktionieren nur, wenn der Server vom Telefon erreichbar ist (LAN/WLAN).
+    </div>
+
+    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="{{ section.settings.backend_url | escape }}" target="_blank" rel="noopener noreferrer" class="button">
+        Monitor öffnen
+      </a>
+      <a href="{{ section.settings.backend_url | escape }}" class="button button--secondary">
+        Im gleichen Tab öffnen
+      </a>
+    </div>
+
+    {%- if section.settings.embed -%}
+      {%- if section.settings.backend_url contains 'https://' -%}
+        <div style="margin-top: 14px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,.12);">
+          <iframe
+            title="Produktion Monitor"
+            src="{{ section.settings.backend_url | escape }}"
+            style="width: 100%; height: 80vh; border: 0;"
+            allow="camera *; clipboard-read *; clipboard-write *"
+          ></iframe>
+        </div>
+      {%- else -%}
+        <div style="margin-top: 14px; opacity: .85; font-size: 14px;">
+          Einbettung ist nur möglich, wenn der Monitor per HTTPS erreichbar ist (Browser blockiert Inhalte über HTTP in einer HTTPS-Shopify-Seite).
+        </div>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Produktion Monitor",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "backend_url",
+      "label": "Monitor URL",
+      "default": "http://192.168.2.158:3006/display"
+    },
+    {
+      "type": "checkbox",
+      "id": "embed",
+      "label": "Im Shopify-Page einbetten (nur HTTPS)",
+      "default": false
+    }
+  ]
+}
+{% endschema %}
