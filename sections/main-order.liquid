@@ -18,6 +18,26 @@
   <div>
     <h1 class="customer__title">{{ 'customer.account.title' | t }}</h1>
     <a href="{{ routes.account_url }}">{{ 'customer.account.return' | t }}</a>
+    <nav class="account-nav" aria-label="Konto-Navigation">
+      <a
+        href="{{ routes.account_url }}"
+        class="account-nav__link{% if request.page_type == 'customers/account' %} account-nav__link--active{% endif %}"
+      >
+        Übersicht &amp; Bestellungen
+      </a>
+      <a
+        href="{{ routes.account_addresses_url }}"
+        class="account-nav__link{% if request.page_type == 'customers/addresses' %} account-nav__link--active{% endif %}"
+      >
+        Adressen &amp; Kundendaten
+      </a>
+      <a
+        href="/pages/rechnungen-und-dokumente"
+        class="account-nav__link{% if request.path contains '/pages/rechnungen-und-dokumente' %} account-nav__link--active{% endif %}"
+      >
+        Rechnungen &amp; Dokumente
+      </a>
+    </nav>
   </div>
 
   <div>
@@ -30,6 +50,56 @@
         <p>{{ 'customer.order.cancelled_html' | t: date: cancelled_at }}</p>
         <p>{{ 'customer.order.cancelled_reason' | t: reason: order.cancel_reason_label }}</p>
       {%- endif -%}
+
+      {% comment %} ── Dokumentennummern: Rechnung + Lieferschein ── {% endcomment %}
+      {%- capture raw_digits -%}
+        {%- for c in order.order_number -%}
+          {%- assign cc = c | string -%}
+          {%- if cc == '0' or cc == '1' or cc == '2' or cc == '3' or cc == '4' or cc == '5' or cc == '6' or cc == '7' or cc == '8' or cc == '9' -%}{{ cc }}{%- endif -%}
+        {%- endfor -%}
+      {%- endcapture -%}
+      {%- assign order_digits = raw_digits | replace: ' ', '' | replace: "
+", '' | strip -%}
+      {%- if order_digits == '' -%}
+        {%- capture order_digits -%}{% for c in order.name %}{%- assign cc = c | string -%}{%- if cc == '0' or cc == '1' or cc == '2' or cc == '3' or cc == '4' or cc == '5' or cc == '6' or cc == '7' or cc == '8' or cc == '9' -%}{{ cc }}{%- endif -%}{% endfor %}{%- endcapture -%}
+        {%- assign order_digits = order_digits | replace: ' ', '' | replace: "
+", '' | strip -%}
+      {%- endif -%}
+      {%- assign invoice_nr = 'RE-' | append: order_digits -%}
+      {%- assign fulfill_count = 0 -%}
+      {%- for _f in order.fulfillments -%}{%- assign fulfill_count = fulfill_count | plus: 1 -%}{%- endfor -%}
+      {%- assign slip_idx = 1 -%}
+      {%- if fulfill_count > 0 -%}{%- assign slip_idx = fulfill_count -%}{%- endif -%}
+      {%- assign packing_slip_nr = invoice_nr | append: '-' | append: slip_idx -%}
+
+      <div style="background:#f5f6f8; border:1px solid #e5e7eb; border-radius:10px; padding:10px 14px; margin:1rem 0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 20px;">
+        <div>
+          <div style="font-size:10.5px; color:#6b7280; font-weight:700; letter-spacing:.05em; text-transform:uppercase;">Bestellung (Shopify)</div>
+          <div style="font-size:15px; font-weight:800; margin-top:2px;">{{ order.name | escape }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px; color:#6b7280; font-weight:700; letter-spacing:.05em; text-transform:uppercase;">Rechnungs-Nr.</div>
+          <div style="font-size:15px; font-weight:800; margin-top:2px; color:#111827;">{{ invoice_nr }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px; color:#6b7280; font-weight:700; letter-spacing:.05em; text-transform:uppercase;">Lieferschein-Nr. <span style="color:#374151;">({{ slip_idx }}. Lieferung)</span></div>
+          <div style="font-size:15px; font-weight:800; margin-top:2px; color:#111827;">{{ packing_slip_nr }}</div>
+        </div>
+      </div>
+
+      <!-- Lexware Invoice Download Button -->
+      <div style="margin: 1.5rem 0;">
+        {%- capture lexify_string -%}rollladenwelt{{ order.id }}|{{ customer.id }}|0{%- endcapture -%}
+        {%- assign lexify_token = lexify_string | base64_encode | replace: '+', '-' | replace: '/', '_' | replace: '=', '' -%}
+        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:stretch;">
+          <a href="https://lexify.me/doc/{{ lexify_token }}/order_{{ order.order_number }}_invoice.pdf" target="_blank" class="button button--secondary" style="display:flex; align-items:center; gap:10px;">
+            📄 <span><strong>Rechnung herunterladen</strong> <span style="font-size:12px; color:#6b7280; display:block;">{{ invoice_nr }}</span></span>
+          </a>
+          <a href="https://lexify.me/doc/{{ lexify_token }}/order_{{ order.order_number }}_packingslip.pdf" target="_blank" class="button button--secondary" style="display:flex; align-items:center; gap:10px; opacity:.85;">
+            🚚 <span><strong>Lieferschein öffnen</strong> <span style="font-size:12px; color:#6b7280; display:block;">{{ packing_slip_nr }}</span></span>
+          </a>
+        </div>
+      </div>
 
       <table role="table" class="order-details">
         <caption class="visually-hidden">
@@ -55,6 +125,48 @@
                 data-label="{{ 'customer.order.product' | t }}"
               >
                 <div>
+                  {%- assign is_custom_roller = false -%}
+                  {%- assign roller_preview = '' -%}
+                  {%- assign roller_config = '' -%}
+                  {%- assign roller_endleiste = '' -%}
+                  {%- assign roller_weight = '' -%}
+                  {%- assign roller_project = '' -%}
+                  {%- assign roller_sku = '' -%}
+                  {%- for property in line_item.properties -%}
+                    {%- if property.first == '_Kalkulation_Typ' and property.last == 'Maßanfertigung' -%}
+                      {%- assign is_custom_roller = true -%}
+                    {%- endif -%}
+                    {%- if property.first == '_PreviewImageUrl' and property.last != blank -%}
+                      {%- assign roller_preview = property.last -%}
+                    {%- endif -%}
+                    {%- if property.first == 'Konfiguration' and property.last != blank -%}
+                      {%- assign is_custom_roller = true -%}
+                      {%- assign roller_config = property.last -%}
+                    {%- endif -%}
+                    {%- if property.first == 'Endleiste' and property.last != blank -%}
+                      {%- assign roller_endleiste = property.last -%}
+                    {%- endif -%}
+                    {%- if property.first == 'Gewicht (ca.)' and property.last != blank -%}
+                      {%- assign roller_weight = property.last -%}
+                    {%- endif -%}
+                    {%- if property.first == 'Projekt' and property.last != blank -%}
+                      {%- assign roller_project = property.last -%}
+                    {%- endif -%}
+                    {%- if property.first == 'Art.-Nr.' and property.last != blank -%}
+                      {%- assign roller_sku = property.last -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+
+                  {%- if roller_preview != blank -%}
+                    <img
+                      src="{{ roller_preview }}"
+                      alt=""
+                      loading="lazy"
+                      width="80"
+                      height="80"
+                      style="float:right; width:80px; height:80px; object-fit:contain; margin-left: 10px;"
+                    >
+                  {%- endif -%}
                   {%- if line_item.url != blank -%}
                     <a href="{{ line_item.url }}">{{ line_item.title | escape }}</a>
                   {%- else -%}
@@ -74,19 +186,34 @@
                         </span>
                       {%- endunless -%}
                       {%- if property_size != 0 -%}
-                        {%- for property in line_item.properties -%}
-                          {% assign property_first_char = property.first | slice: 0 %}
-                          {%- if property.last != blank and property_first_char != '_' -%}
-                            <span>{{ property.first }}:</span>
-                            <span>
-                              {%- if property.last contains '/uploads/' -%}
-                                <a href="{{ property.last }}">{{ property.last | split: '/' | last }}</a>
-                              {%- else -%}
-                                {{ property.last }}
-                              {%- endif -%}
-                            </span>
+                        {%- if is_custom_roller -%}
+                          {%- if roller_project != blank -%}
+                            <span>Projekt:</span><span>{{ roller_project }}</span>
                           {%- endif -%}
-                        {%- endfor -%}
+                          {%- if roller_config != blank -%}
+                            <span>Konfiguration:</span><span>{{ roller_config }}</span>
+                          {%- endif -%}
+                          {%- if roller_endleiste != blank -%}
+                            <span>Endleiste:</span><span>{{ roller_endleiste }}</span>
+                          {%- endif -%}
+                          {%- if roller_weight != blank -%}
+                            <span>Gewicht:</span><span>{{ roller_weight }}</span>
+                          {%- endif -%}
+                        {%- else -%}
+                          {%- for property in line_item.properties -%}
+                            {% assign property_first_char = property.first | slice: 0 %}
+                            {%- if property.last != blank and property_first_char != '_' -%}
+                              <span>{{ property.first }}:</span>
+                              <span>
+                                {%- if property.last contains '/uploads/' -%}
+                                  <a href="{{ property.last }}">{{ property.last | split: '/' | last }}</a>
+                                {%- else -%}
+                                  {{ property.last }}
+                                {%- endif -%}
+                              </span>
+                            {%- endif -%}
+                          {%- endfor -%}
+                        {%- endif -%}
                       {%- endif -%}
                     </div>
                   {%- endunless -%}
@@ -131,47 +258,55 @@
                 role="cell"
                 data-label="{{ 'customer.order.sku' | t }}"
               >
-                {{ line_item.sku }}
+                {%- if line_item.sku != blank -%}
+                  {{ line_item.sku }}
+                {%- else -%}
+                  {{ roller_sku }}
+                {%- endif -%}
               </td>
               <td
                 headers="Row{{ line_item.key }} ColumnPrice"
                 role="cell"
                 data-label="{{ 'customer.order.price' | t }}"
               >
-                {%- if line_item.original_price != line_item.final_price or line_item.unit_price_measurement -%}
-                  <dl>
-                    {%- if line_item.original_price != line_item.final_price -%}
-                      <dt>
-                        <span class="visually-hidden">{{ 'products.product.price.regular_price' | t }}</span>
-                      </dt>
-                      <dd class="regular-price">
-                        <s>{{ line_item.original_price | money }}</s>
-                      </dd>
-                      <dt>
-                        <span class="visually-hidden">{{ 'products.product.price.sale_price' | t }}</span>
-                      </dt>
-                      <dd>
-                        <span>{{ line_item.final_price | money }}</span>
-                      </dd>
-                    {%- else -%}
-                      <dt>
-                        <span class="visually-hidden">{{ 'products.product.price.regular_price' | t }}</span>
-                      </dt>
-                      <dd>
-                        {{ line_item.original_price | money }}
-                      </dd>
-                    {%- endif -%}
-                    {%- if line_item.unit_price_measurement -%}
-                      <dt>
-                        <span class="visually-hidden">{{ 'products.product.price.unit_price' | t }}</span>
-                      </dt>
-                      <dd class="unit-price">
-                        {% render 'unit-price', price: line_item.unit_price, measurement: line_item.unit_price_measurement, hide_accessibility_label: true %}
-                      </dd>
-                    {%- endif -%}
-                  </dl>
+                {%- if is_custom_roller -%}
+                  <span>{{ line_item.final_line_price | money }}</span>
                 {%- else -%}
-                  <span>{{ line_item.final_price | money }}</span>
+                  {%- if line_item.original_price != line_item.final_price or line_item.unit_price_measurement -%}
+                    <dl>
+                      {%- if line_item.original_price != line_item.final_price -%}
+                        <dt>
+                          <span class="visually-hidden">{{ 'products.product.price.regular_price' | t }}</span>
+                        </dt>
+                        <dd class="regular-price">
+                          <s>{{ line_item.original_price | money }}</s>
+                        </dd>
+                        <dt>
+                          <span class="visually-hidden">{{ 'products.product.price.sale_price' | t }}</span>
+                        </dt>
+                        <dd>
+                          <span>{{ line_item.final_price | money }}</span>
+                        </dd>
+                      {%- else -%}
+                        <dt>
+                          <span class="visually-hidden">{{ 'products.product.price.regular_price' | t }}</span>
+                        </dt>
+                        <dd>
+                          {{ line_item.original_price | money }}
+                        </dd>
+                      {%- endif -%}
+                      {%- if line_item.unit_price_measurement -%}
+                        <dt>
+                          <span class="visually-hidden">{{ 'products.product.price.unit_price' | t }}</span>
+                        </dt>
+                        <dd class="unit-price">
+                          {% render 'unit-price', price: line_item.unit_price, measurement: line_item.unit_price_measurement, hide_accessibility_label: true %}
+                        </dd>
+                      {%- endif -%}
+                    </dl>
+                  {%- else -%}
+                    <span>{{ line_item.final_price | money }}</span>
+                  {%- endif -%}
                 {%- endif -%}
               </td>
               <td
@@ -179,30 +314,38 @@
                 role="cell"
                 data-label="{{ 'customer.order.quantity' | t }}"
               >
-                {{ line_item.quantity }}
+                {%- if is_custom_roller -%}
+                  1
+                {%- else -%}
+                  {{ line_item.quantity }}
+                {%- endif -%}
               </td>
               <td
                 headers="Row{{ line_item.key }} ColumnTotal"
                 role="cell"
                 data-label="{{ 'customer.order.total' | t }}"
               >
-                {%- if line_item.original_line_price != line_item.final_line_price -%}
-                  <dl>
-                    <dt>
-                      <span class="visually-hidden">{{ 'products.product.price.regular_price' | t }}</span>
-                    </dt>
-                    <dd class="regular-price">
-                      <s>{{ line_item.original_line_price | money }}</s>
-                    </dd>
-                    <dt>
-                      <span class="visually-hidden">{{ 'products.product.price.sale_price' | t }}</span>
-                    </dt>
-                    <dd>
-                      <span>{{ line_item.final_line_price | money }}</span>
-                    </dd>
-                  </dl>
+                {%- if is_custom_roller -%}
+                  {{ line_item.final_line_price | money }}
                 {%- else -%}
-                  {{ line_item.original_line_price | money }}
+                  {%- if line_item.original_line_price != line_item.final_line_price -%}
+                    <dl>
+                      <dt>
+                        <span class="visually-hidden">{{ 'products.product.price.regular_price' | t }}</span>
+                      </dt>
+                      <dd class="regular-price">
+                        <s>{{ line_item.original_line_price | money }}</s>
+                      </dd>
+                      <dt>
+                        <span class="visually-hidden">{{ 'products.product.price.sale_price' | t }}</span>
+                      </dt>
+                      <dd>
+                        <span>{{ line_item.final_line_price | money }}</span>
+                      </dd>
+                    </dl>
+                  {%- else -%}
+                    {{ line_item.original_line_price | money }}
+                  {%- endif -%}
                 {%- endif -%}
               </td>
             </tr>
