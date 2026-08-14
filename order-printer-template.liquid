@@ -1,0 +1,316 @@
+{% assign order_name = order.name %}
+{% assign order_number = order.order_number %}
+{% assign created_at = order.created_at %}
+{% assign customer = order.customer %}
+{% assign line_items = order.line_items %}
+{% assign tax_lines = order.tax_lines %}
+{% assign shipping_price = order.shipping_price %}
+{% if order.shipping_address %}{% assign shipping_address = order.shipping_address %}{% endif %}
+{% if order.billing_address %}{% assign billing_address = order.billing_address %}{% endif %}
+{% assign order_raw = order_name | default: order_number | default: '' %}
+{% assign invoice_digits = '' %}{% assign chars = order_raw | split: '' %}{% for c in chars %}{% case c %}{% when '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9' %}{% assign invoice_digits = invoice_digits | append: c %}{% endcase %}{% endfor %}
+{% assign invoice_nr = 'RE-' | append: invoice_digits %}
+{% assign packing_slip_nr = invoice_nr | append: '-1' %}
+
+<div style="margin: 0 0 1.5em 0; padding: 1.5em; border: 1px solid #ddd;">
+  <div style="float: left; width: 50%;">
+    {% assign preferred_logo_url = 'https://cdn.shopify.com/s/files/1/0957/1690/1239/files/Rollladenwelt_logo_insektenschutz_kurz_shopify_header_800px.png?v=1773233424' %}
+    {% assign logo_url = preferred_logo_url %}
+    {% if logo_url == blank %}
+      {% assign logo_url = shop.email_logo_url %}
+      {% if logo_url == blank and shop.brand and shop.brand.logo %}
+        {% assign brand_logo = shop.brand.logo %}
+        {% if brand_logo.src != blank %}
+          {% assign logo_url = brand_logo.src %}
+        {% else %}
+          {% assign logo_url = brand_logo | image_url: width: 440 %}
+        {% endif %}
+      {% endif %}
+      {% if logo_url == blank and shop.brand and shop.brand.square_logo %}
+        {% assign brand_square = shop.brand.square_logo %}
+        {% if brand_square.src != blank %}
+          {% assign logo_url = brand_square.src %}
+        {% else %}
+          {% assign logo_url = brand_square | image_url: width: 440 %}
+        {% endif %}
+      {% endif %}
+    {% endif %}
+    {% if logo_url != blank %}
+      <img src="{{ logo_url }}" alt="" style="max-width: 220px; max-height: 70px; object-fit: contain; margin-bottom: 10px;">
+      <br>
+    {% endif %}
+    <strong>{{ shop.name }}</strong><br>
+    {{ shop.address.street }}<br>
+    {{ shop.address.zip }} {{ shop.address.city }}<br>
+    {{ shop.address.country }}<br>
+    {% if shop.email %}{{ shop.email }}<br>{% endif %}
+    {% if shop.domain %}{{ shop.domain }}<br>{% endif %}
+  </div>
+  <div style="float: right; width: 50%; text-align: right;">
+    <h2 style="margin: 0;">Rechnung</h2>
+    <table style="width: 100%; margin-top: 10px; font-size: 0.95em;">
+      <tr><td style="text-align: right; padding: 2px 0;">Rechnungsnr.:</td><td style="text-align: right; padding: 2px 0;"><strong>{{ invoice_nr }}</strong></td></tr>
+      <tr><td style="text-align: right; padding: 2px 0;">Datum:</td><td style="text-align: right; padding: 2px 0;">{{ created_at | date: "%d.%m.%Y" }}</td></tr>
+      <tr><td style="text-align: right; padding: 2px 0;">Leistungsdatum:</td><td style="text-align: right; padding: 2px 0;">{{ created_at | date: "%d.%m.%Y" }}</td></tr>
+      <tr><td style="text-align: right; padding: 2px 0;">Zahlungsziel:</td><td style="text-align: right; padding: 2px 0;">14 Tage netto ab Rechnungsdatum</td></tr>
+      <tr><td style="text-align: right; padding: 2px 0;">Bestellnr.:</td><td style="text-align: right; padding: 2px 0;">{{ order_number }} ({{ order_name }})</td></tr>
+      <tr><td style="text-align: right; padding: 2px 0;">Kundennr.:</td><td style="text-align: right; padding: 2px 0;">{% if customer and customer.id %}{{ customer.id }}{% else %}-{% endif %}</td></tr>
+      <tr><td style="text-align: right; padding: 2px 0;">Kommission:</td><td style="text-align: right; padding: 2px 0;">{{ order.attributes.Kommission | default: order.attributes.Projekt | default: '-' }}</td></tr>
+    </table>
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+<div style="margin: 0 0 1.5em 0;">
+  <div style="float: left; width: 50%;">
+    <strong>Rechnungsadresse:</strong><br>
+    {{ billing_address.name }}<br>
+    {{ billing_address.street }}<br>
+    {{ billing_address.zip }} {{ billing_address.city }}<br>
+    {{ billing_address.country }}
+  </div>
+  <div style="float: right; width: 50%;">
+    {% if shipping_address %}
+      <strong>Lieferadresse:</strong><br>
+      {{ shipping_address.name }}<br>
+      {{ shipping_address.street }}<br>
+      {{ shipping_address.zip }} {{ shipping_address.city }}<br>
+      {{ shipping_address.country }}
+    {% endif %}
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+{% assign tax_rate = 0.19 %}
+{% if tax_lines and tax_lines.size > 0 %}
+  {% assign tax_rate = tax_lines[0].rate | times: 1.0 %}
+{% endif %}
+{% assign tax_factor = tax_rate | plus: 1 %}
+
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+  <thead>
+    <tr style="border-bottom: 2px solid #000;">
+      <th style="text-align: left; padding: 8px;">Pos.</th>
+      <th style="text-align: left; padding: 8px;">Artikel / Beschreibung</th>
+      <th style="text-align: right; padding: 8px;">Menge</th>
+      <th style="text-align: right; padding: 8px;">Einzelpreis (Netto)</th>
+      <th style="text-align: right; padding: 8px;">USt ({{ tax_rate | times: 100 }}%)</th>
+      <th style="text-align: right; padding: 8px;">Gesamt (Brutto)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% assign pos = 0 %}
+    {% assign merged_keys = '' %}
+    {% assign lines_gross_total = 0 %}
+    {% assign lines_net_total = 0 %}
+    {% assign lines_tax_total = 0 %}
+    {% for line_item in line_items %}
+      {% assign is_custom_roller = false %}
+      {% assign roller_config = '' %}
+      {% assign roller_endleiste = '' %}
+      {% assign roller_weight = '' %}
+      {% assign roller_project = '' %}
+      {% assign roller_preview = '' %}
+      {% assign roller_count = '' %}
+      {% assign order_panzer_anzahl = '' %}
+      {% if order.metafields.custom.panzer_anzahl and order.metafields.custom.panzer_anzahl.value != blank %}
+        {% assign order_panzer_anzahl = order.metafields.custom.panzer_anzahl.value %}
+      {% endif %}
+      {% for property in line_item.properties %}
+        {% if property.first == '_Kalkulation_Typ' and property.last == 'Maßanfertigung' %}
+          {% assign is_custom_roller = true %}
+        {% endif %}
+        {% if property.first == 'Konfiguration' and property.last != blank %}
+          {% assign is_custom_roller = true %}
+          {% assign roller_config = property.last %}
+        {% endif %}
+        {% if property.first == 'Endleiste' and property.last != blank %}
+          {% assign roller_endleiste = property.last %}
+        {% endif %}
+        {% if property.first == 'Gewicht (ca.)' and property.last != blank %}
+          {% assign roller_weight = property.last %}
+        {% endif %}
+        {% if property.first == 'Projekt' and property.last != blank %}
+          {% assign roller_project = property.last %}
+        {% endif %}
+        {% if property.first == '_PreviewImageUrl' and property.last != blank %}
+          {% assign roller_preview = property.last %}
+        {% endif %}
+        {% if property.first == '_Anzahl_Rolllaeden' and property.last != blank %}
+          {% assign roller_count = property.last %}
+        {% endif %}
+      {% endfor %}
+      {% if is_custom_roller %}
+        {% assign panzer_anzahl_to_show = roller_count | default: order_panzer_anzahl %}
+        {% assign panzer_count_int = panzer_anzahl_to_show | plus: 0 %}
+        {% if panzer_count_int <= 0 %}
+          {% assign panzer_count_int = 1 %}
+        {% endif %}
+        {% assign roller_line_gross = line_item.final_line_price %}
+        {% assign roller_unit_gross = roller_line_gross | divided_by: panzer_count_int %}
+        {% assign roller_unit_net = roller_unit_gross | divided_by: tax_factor %}
+        {% assign roller_line_net = roller_line_gross | divided_by: tax_factor %}
+        {% assign roller_line_tax = roller_line_gross | minus: roller_line_net %}
+        {% assign lines_gross_total = lines_gross_total | plus: roller_line_gross %}
+        {% assign lines_net_total = lines_net_total | plus: roller_line_net %}
+        {% assign lines_tax_total = lines_tax_total | plus: roller_line_tax %}
+        <tr style="border-bottom: 1px solid #eee;">
+          {% assign pos = pos | plus: 1 %}
+          <td style="padding: 8px; vertical-align: top;">{{ pos }}</td>
+          <td style="padding: 8px; vertical-align: top;">
+            <strong>{{ line_item.title }}</strong>
+            {% if line_item.sku != blank %}
+              <br><small>Art.-Nr.: {{ line_item.sku }}</small>
+            {% else %}
+              {% for property in line_item.properties %}
+                {% if property.first == 'Art.-Nr.' and property.last != blank %}
+                  <br><small>Art.-Nr.: {{ property.last }}</small>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            <div style="font-size: 0.9em; color: #555; margin-top: 4px;">
+              {% if roller_preview != blank %}
+                <img src="{{ roller_preview }}" alt="" style="float: right; width: 70px; height: 70px; object-fit: contain; margin-left: 10px; border: 1px solid #eee;">
+              {% endif %}
+              {% if roller_project != blank %}<div>• Projekt: {{ roller_project }}</div>{% endif %}
+              {% if roller_config != blank %}<div>• {{ roller_config }}</div>{% endif %}
+              {% if panzer_anzahl_to_show != blank %}<div>• Anzahl Panzer: {{ panzer_anzahl_to_show }}</div>{% endif %}
+              {% if roller_endleiste != blank %}<div>• Endleiste: {{ roller_endleiste }}</div>{% endif %}
+              {% if roller_weight != blank %}<div>• Gewicht: {{ roller_weight }}</div>{% endif %}
+              <div style="clear: both;"></div>
+            </div>
+          </td>
+          <td style="text-align: right; padding: 8px; vertical-align: top;">{{ panzer_count_int }}</td>
+          <td style="text-align: right; padding: 8px; vertical-align: top;">{{ roller_unit_net | money }}</td>
+          <td style="text-align: right; padding: 8px; vertical-align: top;">{{ roller_line_tax | money }}</td>
+          <td style="text-align: right; padding: 8px; vertical-align: top;">{{ roller_line_gross | money }}</td>
+        </tr>
+      {% else %}
+        {% assign merge_group = '' %}
+        {% assign separate_flag = false %}
+        {% for p in line_item.properties %}
+          {% if p.first == '_Zubehoer_separat' and p.last == 'Ja' %}
+            {% assign separate_flag = true %}
+          {% endif %}
+          {% if p.first == 'Projekt' and p.last != blank %}
+            {% assign merge_group = p.last %}
+          {% endif %}
+        {% endfor %}
+        {% if separate_flag == false %}
+          {% assign merge_group = '' %}
+        {% endif %}
+        {% assign key = line_item.title | append: '||' | append: line_item.sku | append: '||' | append: merge_group %}
+        {% assign needle = key | append: '|||' %}
+        {% unless merged_keys contains needle %}
+          {% assign merged_keys = merged_keys | append: needle %}
+          {% assign merged_qty = 0 %}
+          {% assign merged_gross = 0 %}
+          {% for li2 in line_items %}
+            {% assign li2_is_custom = false %}
+            {% for p2 in li2.properties %}
+              {% if p2.first == '_Kalkulation_Typ' and p2.last == 'Maßanfertigung' %}
+                {% assign li2_is_custom = true %}
+              {% endif %}
+            {% endfor %}
+            {% unless li2_is_custom %}
+              {% assign li2_group = '' %}
+              {% assign li2_sep = false %}
+              {% for p3 in li2.properties %}
+                {% if p3.first == '_Zubehoer_separat' and p3.last == 'Ja' %}
+                  {% assign li2_sep = true %}
+                {% endif %}
+                {% if p3.first == 'Projekt' and p3.last != blank %}
+                  {% assign li2_group = p3.last %}
+                {% endif %}
+              {% endfor %}
+              {% if li2_sep == false %}
+                {% assign li2_group = '' %}
+              {% endif %}
+              {% if li2.title == line_item.title and li2.sku == line_item.sku and li2_group == merge_group %}
+                {% assign merged_qty = merged_qty | plus: li2.quantity %}
+                {% assign merged_gross = merged_gross | plus: li2.final_line_price %}
+              {% endif %}
+            {% endunless %}
+          {% endfor %}
+          {% assign merged_unit_gross = merged_gross | divided_by: merged_qty %}
+          {% assign merged_unit_net = merged_unit_gross | divided_by: tax_factor %}
+          {% assign merged_line_net = merged_gross | divided_by: tax_factor %}
+          {% assign merged_line_tax = merged_gross | minus: merged_line_net %}
+          {% assign lines_gross_total = lines_gross_total | plus: merged_gross %}
+          {% assign lines_net_total = lines_net_total | plus: merged_line_net %}
+          {% assign lines_tax_total = lines_tax_total | plus: merged_line_tax %}
+          <tr style="border-bottom: 1px solid #eee;">
+            {% assign pos = pos | plus: 1 %}
+            <td style="padding: 8px; vertical-align: top;">{{ pos }}</td>
+            <td style="padding: 8px; vertical-align: top;">
+              <strong>{{ line_item.title }}</strong>
+              {% if line_item.sku != blank %}
+                <br><small>Art.-Nr.: {{ line_item.sku }}</small>
+              {% endif %}
+            </td>
+            <td style="text-align: right; padding: 8px; vertical-align: top;">{{ merged_qty }}</td>
+            <td style="text-align: right; padding: 8px; vertical-align: top;">{{ merged_unit_net | money }}</td>
+            <td style="text-align: right; padding: 8px; vertical-align: top;">{{ merged_line_tax | money }}</td>
+            <td style="text-align: right; padding: 8px; vertical-align: top;">{{ merged_gross | money }}</td>
+          </tr>
+        {% endunless %}
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+
+{% assign shipping_gross = order.shipping_price | default: shipping_price | default: 0 | plus: 0 %}
+{% assign shipping_net = shipping_gross | divided_by: tax_factor %}
+{% assign shipping_tax = shipping_gross | minus: shipping_net %}
+{% assign subtotal_net = lines_net_total %}
+{% assign tax_total = lines_tax_total | plus: shipping_tax %}
+{% assign total_gross = lines_gross_total | plus: shipping_gross %}
+
+<div style="float: right; width: 40%;">
+  <table style="width: 100%;">
+    <tr>
+      <td style="padding: 4px;">Zwischensumme (Netto):</td>
+      <td style="text-align: right; padding: 4px;">
+        {{ subtotal_net | money }}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 4px;">Versand (Netto):</td>
+      <td style="text-align: right; padding: 4px;">{{ shipping_net | money }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 4px;">USt ({{ tax_rate | times: 100 }}%):</td>
+      <td style="text-align: right; padding: 4px;">{{ tax_total | money }}</td>
+    </tr>
+    <tr style="font-weight: bold; border-top: 2px solid #000;">
+      <td style="padding: 8px;">Gesamtsumme (Brutto):</td>
+      <td style="text-align: right; padding: 8px;">{{ total_gross | money }}</td>
+    </tr>
+  </table>
+</div>
+<div style="clear: both;"></div>
+
+<div style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 10px; font-size: 0.8em;">
+  <table style="width: 100%;">
+    <tr>
+      <td style="vertical-align: top; width: 33%;">
+        <strong>{{ shop.name }}</strong><br>
+        Musterstraße 1<br>
+        12345 Musterstadt<br>
+        Deutschland
+      </td>
+      <td style="vertical-align: top; width: 33%;">
+        <strong>Bankverbindung</strong><br>
+        Musterbank<br>
+        IBAN DE00 0000 0000 0000 0000 00<br>
+        BIC MUSEDEFFXXX
+      </td>
+      <td style="vertical-align: top; width: 33%; text-align: right;">
+        <strong>Kontakt</strong><br>
+        Tel. +49 000 000000<br>
+        E-Mail {{ shop.email | default: 'info@example.com' }}<br>
+        {% if shop.address.vat_number %}USt-IdNr. {{ shop.address.vat_number }}{% else %}USt-IdNr. DE000000000{% endif %}
+      </td>
+    </tr>
+  </table>
+</div>

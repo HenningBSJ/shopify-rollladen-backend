@@ -1,0 +1,295 @@
+{% assign order_name = order.name %}
+{% assign order_number = order.order_number %}
+{% assign created_at = order.created_at %}
+{% assign customer = order.customer %}
+{% assign line_items = order.line_items %}
+{% assign tax_lines = order.tax_lines %}
+{% assign shipping_price = order.shipping_price %}
+{% if order.shipping_address %}{% assign shipping_address = order.shipping_address %}{% endif %}
+{% if order.billing_address %}{% assign billing_address = order.billing_address %}{% endif %}
+{% assign order_raw = order_name | default: order_number | default: '' %}
+{% assign invoice_digits = '' %}{% assign chars = order_raw | split: '' %}{% for c in chars %}{% case c %}{% when '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9' %}{% assign invoice_digits = invoice_digits | append: c %}{% endcase %}{% endfor %}
+{% assign invoice_nr = 'RE-' | append: invoice_digits %}
+{% assign packing_slip_nr = invoice_nr | append: '-1' %}
+
+<div style="font-size: 13px;">
+<style>
+  .pickbox { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #000; }
+</style>
+<div style="margin: 0 0 1.5em 0; padding: 1.5em; border: 1px solid #ddd;">
+  <div style="float: left; width: 50%;">
+    <strong>Von</strong><br>
+    {{ shop.name }}<br>
+    {{ shop.address.street }}<br>
+    {{ shop.address.zip }} {{ shop.address.city }}<br>
+    {{ shop.address.country }}
+  </div>
+  <div style="float: right; width: 50%; text-align: right;">
+    <h2 style="margin: 0;">Kommissionierungszettel</h2>
+    <div><strong>Rechnungs-Nr.: {{ invoice_nr }}</strong></div>
+    <div><strong>Lieferschein-Nr.: {{ packing_slip_nr }}</strong></div>
+    <div>Bestellung {{ order_name }}</div>
+    <div>{{ created_at | date: "%d.%m.%Y" }}</div>
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+<div style="margin: 0 0 1.5em 0;">
+  <div style="float: left; width: 50%;">
+    <strong>Kommission</strong><br>
+    {% if order.attributes.Kommission != blank %}
+      {{ order.attributes.Kommission }}
+    {% elsif order.attributes.Projekt != blank %}
+      {{ order.attributes.Projekt }}
+    {% else %}
+      {{ order.note | default: '-' }}
+    {% endif %}
+  </div>
+  <div style="float: right; width: 50%; text-align: right;">
+    <strong>Versand an</strong><br>
+    {% if shipping_address %}
+      {{ shipping_address.name }}<br>
+      {% if shipping_address.company != blank %}{{ shipping_address.company }}<br>{% endif %}
+      {{ shipping_address.street }}<br>
+      {{ shipping_address.zip }} {{ shipping_address.city }}<br>
+      {{ shipping_address.country }}
+    {% else %}
+      {{ billing_address.name }}<br>
+      {% if billing_address.company != blank %}{{ billing_address.company }}<br>{% endif %}
+      {{ billing_address.street }}<br>
+      {{ billing_address.zip }} {{ billing_address.city }}<br>
+      {{ billing_address.country }}
+    {% endif %}
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+{% assign order_panzer_anzahl = '' %}
+{% if order.metafields.custom.panzer_anzahl and order.metafields.custom.panzer_anzahl.value != blank %}
+  {% assign order_panzer_anzahl = order.metafields.custom.panzer_anzahl.value %}
+{% endif %}
+
+<h3 style="margin: 0 0 10px 0;">Panzer / Zuschnitt</h3>
+
+{% for line_item in line_items %}
+  {% assign is_custom_roller = false %}
+  {% assign roller_config = '' %}
+  {% assign roller_endleiste = '' %}
+  {% assign roller_project = '' %}
+  {% assign roller_count = '' %}
+  {% assign roller_material = '' %}
+  {% assign roller_profile = '' %}
+  {% assign roller_color = '' %}
+  {% assign width_mm = 0 %}
+  {% assign height_mm = 0 %}
+
+  {% for property in line_item.properties %}
+    {% if property.first == '_Kalkulation_Typ' and property.last == 'Maßanfertigung' %}
+      {% assign is_custom_roller = true %}
+    {% endif %}
+    {% if property.first == 'Konfiguration' and property.last != blank %}
+      {% assign is_custom_roller = true %}
+      {% assign roller_config = property.last %}
+    {% endif %}
+    {% if property.first == 'Endleiste' and property.last != blank %}
+      {% assign roller_endleiste = property.last %}
+    {% endif %}
+    {% if property.first == 'Projekt' and property.last != blank %}
+      {% assign roller_project = property.last %}
+    {% endif %}
+    {% if property.first == '_Anzahl_Rolllaeden' and property.last != blank %}
+      {% assign roller_count = property.last %}
+    {% endif %}
+  {% endfor %}
+
+  {% if is_custom_roller %}
+    {% assign panzer_anzahl_to_show = roller_count | default: order_panzer_anzahl %}
+    {% assign panzer_count_int = panzer_anzahl_to_show | plus: 0 %}
+    {% if panzer_count_int <= 0 %}
+      {% assign panzer_count_int = 1 %}
+    {% endif %}
+
+    {% assign config_norm = roller_config | replace: '×', 'x' %}
+    {% assign config_parts = config_norm | split: ',' %}
+    {% assign dims = config_parts[0] | strip %}
+    {% assign dim_parts = dims | split: 'x' %}
+    {% assign width_str = dim_parts[0] | strip | replace: 'mm', '' | strip %}
+    {% assign height_str = dim_parts[1] | strip | replace: 'mm', '' | strip %}
+    {% assign width_mm = width_str | plus: 0 %}
+    {% assign height_mm = height_str | plus: 0 %}
+
+    {% assign roller_material = config_parts[1] | default: '' | strip %}
+    {% assign roller_profile = config_parts[2] | default: '' | strip %}
+
+    {% if config_norm contains 'Farbe:' %}
+      {% assign roller_color = config_norm | split: 'Farbe:' | last | strip %}
+      {% assign roller_color = roller_color | split: '(' | first | strip %}
+    {% endif %}
+
+    {% assign material_short = roller_material %}
+    {% if roller_material contains 'Aluminium' %}
+      {% assign material_short = 'Alu' %}
+    {% endif %}
+    {% if roller_material contains 'PVC' %}
+      {% assign material_short = 'PVC' %}
+    {% endif %}
+
+    {% assign profile_short = roller_profile %}
+    {% if roller_profile contains 'Mini' %}
+      {% assign profile_short = 'Mini' %}
+    {% elsif roller_profile contains 'Maxi' %}
+      {% assign profile_short = 'Maxi' %}
+    {% endif %}
+
+    {% assign profile_height = 37 %}
+    {% if roller_profile contains 'Maxi' %}
+      {% assign profile_height = 52 %}
+    {% endif %}
+
+    {% assign endleiste_hoehe = 50 %}
+    {% assign net_height = height_mm | minus: endleiste_hoehe %}
+    {% if net_height < 0 %}
+      {% assign net_height = 0 %}
+    {% endif %}
+
+    {% assign net_height_float = net_height | times: 1.0 %}
+    {% assign profile_height_float = profile_height | times: 1.0 %}
+    {% assign rods = net_height_float | divided_by: profile_height_float | ceil %}
+    {% assign rods_int = rods | plus: 0 %}
+
+    {% assign unperforated = 8 %}
+    {% if rods_int < unperforated %}
+      {% assign unperforated = rods_int %}
+    {% endif %}
+    {% assign perforated = rods_int | minus: unperforated %}
+    {% if perforated < 0 %}
+      {% assign perforated = 0 %}
+    {% endif %}
+
+    {% assign cut_width = width_mm %}
+    {% if roller_material contains 'Aluminium' %}
+      {% assign cut_width = width_mm | minus: 10 %}
+    {% endif %}
+    {% if cut_width < 0 %}
+      {% assign cut_width = 0 %}
+    {% endif %}
+
+    {% assign rods_total = rods_int | times: panzer_count_int %}
+    {% assign unperforated_total = unperforated | times: panzer_count_int %}
+    {% assign perforated_total = perforated | times: panzer_count_int %}
+
+    {% assign saw_kerf = 2 %}
+    {% assign bar_length = 6000 %}
+    {% assign cut_with_kerf = cut_width | plus: saw_kerf %}
+    {% assign pieces_per_bar = bar_length | divided_by: cut_with_kerf | floor | plus: 0 %}
+    {% if pieces_per_bar <= 0 %}
+      {% assign pieces_per_bar = 1 %}
+    {% endif %}
+
+    {% assign unperforated_bars = unperforated_total | times: 1.0 | divided_by: pieces_per_bar | ceil | plus: 0 %}
+    {% assign perforated_bars = perforated_total | times: 1.0 | divided_by: pieces_per_bar | ceil | plus: 0 %}
+
+    <div style="border: 1px solid #eee; padding: 10px; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; gap: 12px; font-weight: bold;">
+        <div>
+          {{ panzer_count_int }} x {{ material_short }} {{ profile_short }}{% if roller_color != blank %} {{ roller_color }}{% endif %}
+        </div>
+        <span class="pickbox"></span>
+      </div>
+      {% if roller_project != blank %}
+        <div style="color: #555; font-size: 0.9em;">Projekt: {{ roller_project }}</div>
+      {% endif %}
+      <div style="margin-top: 6px;">
+        {{ width_mm }} mm x {{ height_mm }} mm;
+          <strong>Schnittmaß {{ cut_width }} mm</strong>,
+        Stäbe {{ rods_total }} ({{ unperforated_total }} ungelocht ({{ unperforated_bars }} x 6m), {{ perforated_total }} gelocht ({{ perforated_bars }} x 6m))
+      </div>
+      {% if roller_endleiste != blank %}
+        {% assign endleiste_color = roller_endleiste | split: '(' | first | strip %}
+        <div style="margin-top: 4px;">
+          Endleiste: {{ endleiste_color }}, {{ profile_short }}, {% if roller_endleiste contains 'mit Löchern' %}gebohrt{% else %}ungebohrt{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endfor %}
+
+<h3 style="margin: 20px 0 10px 0;">Zubehör</h3>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+  <thead>
+    <tr style="border-bottom: 2px solid #000;">
+      <th style="text-align: left; padding: 8px;">Menge</th>
+      <th style="text-align: left; padding: 8px;">Artikel</th>
+      <th style="text-align: center; padding: 8px; width: 28px;">OK</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% assign merged_keys = '' %}
+    {% for line_item in line_items %}
+      {% assign is_custom_roller = false %}
+      {% for property in line_item.properties %}
+        {% if property.first == '_Kalkulation_Typ' and property.last == 'Maßanfertigung' %}
+          {% assign is_custom_roller = true %}
+        {% endif %}
+      {% endfor %}
+      {% unless is_custom_roller %}
+        {% assign merge_group = '' %}
+        {% assign separate_flag = false %}
+        {% for p in line_item.properties %}
+          {% if p.first == '_Zubehoer_separat' and p.last == 'Ja' %}
+            {% assign separate_flag = true %}
+          {% endif %}
+          {% if p.first == 'Projekt' and p.last != blank %}
+            {% assign merge_group = p.last %}
+          {% endif %}
+        {% endfor %}
+        {% if separate_flag == false %}
+          {% assign merge_group = '' %}
+        {% endif %}
+        {% assign key = line_item.title | append: '||' | append: line_item.sku | append: '||' | append: merge_group %}
+        {% assign needle = key | append: '|||' %}
+        {% unless merged_keys contains needle %}
+          {% assign merged_keys = merged_keys | append: needle %}
+          {% assign merged_qty = 0 %}
+          {% for li2 in line_items %}
+            {% assign li2_is_custom = false %}
+            {% for p2 in li2.properties %}
+              {% if p2.first == '_Kalkulation_Typ' and p2.last == 'Maßanfertigung' %}
+                {% assign li2_is_custom = true %}
+              {% endif %}
+            {% endfor %}
+            {% unless li2_is_custom %}
+              {% assign li2_group = '' %}
+              {% assign li2_sep = false %}
+              {% for p3 in li2.properties %}
+                {% if p3.first == '_Zubehoer_separat' and p3.last == 'Ja' %}
+                  {% assign li2_sep = true %}
+                {% endif %}
+                {% if p3.first == 'Projekt' and p3.last != blank %}
+                  {% assign li2_group = p3.last %}
+                {% endif %}
+              {% endfor %}
+              {% if li2_sep == false %}
+                {% assign li2_group = '' %}
+              {% endif %}
+              {% if li2.title == line_item.title and li2.sku == line_item.sku and li2_group == merge_group %}
+                {% assign merged_qty = merged_qty | plus: li2.quantity %}
+              {% endif %}
+            {% endunless %}
+          {% endfor %}
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 8px; vertical-align: top;">{{ merged_qty }}</td>
+            <td style="padding: 8px; vertical-align: top;">
+              <strong>{{ line_item.title }}</strong>
+              {% if line_item.sku != blank %}
+                <div style="font-size: 0.9em; color: #555;">Art.-Nr.: {{ line_item.sku }}</div>
+              {% endif %}
+            </td>
+            <td style="padding: 8px; vertical-align: top; text-align: center;"><span class="pickbox"></span></td>
+          </tr>
+        {% endunless %}
+      {% endunless %}
+    {% endfor %}
+  </tbody>
+</table>
+</div>
