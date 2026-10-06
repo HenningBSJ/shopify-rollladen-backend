@@ -370,7 +370,7 @@ router.get('/montagebericht', async (req, res, next) => {
     window.addEventListener('afterprint', () => {
       try { window.close(); } catch (e) {}
     });
-  <\/script>
+  <\\/script>
 </body>
 </html>`;
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -544,12 +544,12 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
       return `
     ${entry.showQr ? `<img class="qr" src="${qrSrc}" alt="QR">` : ''}
     <div class="txt">
-      <div class="line">${escapeHtml(entry.l1 || 'Etikett')}</div>
+      ${entry.custLines.length ? entry.custLines.map(x => `<div class="line">${escapeHtml(x)}</div>`).join('') : (entry.l1 ? `<div class="line">${escapeHtml(entry.l1)}</div>` : '')}
+      ${entry.custLines.length && entry.l1 ? `<div class="line" style="margin-top: 1.2mm;">${escapeHtml(entry.l1)}</div>` : ''}
       ${entry.l2 ? `<div class="line">${escapeHtml(entry.l2)}</div>` : ''}
       ${entry.l3 ? `<div class="line">${escapeHtml(entry.l3)}</div>` : ''}
       ${entry.l4 ? `<div class="line">${escapeHtml(entry.l4)}</div>` : ''}
     </div>
-    ${entry.custLines.length ? `<div class="cust">${entry.custLines.map(x => `<div class="custline">${escapeHtml(x)}</div>`).join('')}</div>` : ''}
     ${entry.dateLabel ? `<div class="datebox">${entry.datePrefixLabel ? `<div class="date-prefix">${escapeHtml(entry.datePrefixLabel)}</div>` : ''}<div class="date">${escapeHtml(entry.dateLabel)}</div></div>` : ''}
     ${entry.op ? `<div class="op">${escapeHtml(entry.op)}</div>` : ''}
     ${packageBadge ? `<div class="pkg">${escapeHtml(packageBadge)}</div>` : ''}
@@ -602,6 +602,7 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
   clientJsLines.push('      var p = new URLSearchParams(window.location.search);');
   clientJsLines.push('      p.forEach(function(v,k){ out[k] = v; });');
   clientJsLines.push('    }catch(e){}');
+  clientJsLines.push('    out.allowDirectPrint = true;');
   clientJsLines.push('    return out;');
   clientJsLines.push('  }');
   clientJsLines.push('  function getReturnTarget(){');
@@ -697,9 +698,14 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
   clientJsLines.push('      });');
   clientJsLines.push('      p = p.then(function(data){');
   clientJsLines.push('        if(abortTimer) clearTimeout(abortTimer);');
-  clientJsLines.push('        var okMsg = "Direktdruck erfolgreich übergeben. Drucker: " + ((data && data.printer) ? String(data.printer) : "(Standarddrucker)");');
+  clientJsLines.push('        var okMsg;');
+  clientJsLines.push('        if(data && data.pdfOnly){');
+  clientJsLines.push('          okMsg = "PDF-only erfolgreich generiert. Kein Druckauftrag an Drucker gesendet.";');
+  clientJsLines.push('        }else{');
+  clientJsLines.push('          okMsg = "Direktdruck erfolgreich übergeben. Drucker: " + ((data && data.printer) ? String(data.printer) : "(Standarddrucker)");');
+  clientJsLines.push('        }');
   clientJsLines.push('        setInfo(okMsg);');
-  clientJsLines.push('        showAlert(okMsg);');
+  clientJsLines.push('        if(getReturnTarget().split("?")[0].split("#")[0] !== "/display/label-tool") showAlert(okMsg);');
   clientJsLines.push('        try{ navigateAfterDirectPrint(); }catch(e){}');
   clientJsLines.push('      });');
   clientJsLines.push('      p = p.catch(function(err){');
@@ -727,6 +733,8 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
   clientJsLines.push('    }');
   clientJsLines.push('  }');
   clientJsLines.push('  function bootstrapPage(){');
+  clientJsLines.push('    var returnsToLabelTool = getReturnTarget().split("?")[0].split("#")[0] === "/display/label-tool";');
+  clientJsLines.push('    if(returnsToLabelTool) window.addEventListener("afterprint", navigateAfterDirectPrint);');
   clientJsLines.push('    try{ log("[LABEL-PAGE:BOOTSTRAP] allowDirectPrint=" + String(!!document.getElementById("directPrintBtn"))); }catch(e){}');
   clientJsLines.push('    var directBtn = document.getElementById("directPrintBtn");');
   clientJsLines.push('    if(directBtn){');
@@ -745,7 +753,7 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
   clientJsLines.push('    }); }');
   clientJsLines.push('    if(autoPrint){');
   clientJsLines.push('      window.addEventListener("load", function(){ setTimeout(printNow, 200); });');
-  clientJsLines.push('      window.addEventListener("afterprint", function(){ try{ window.close(); }catch(e){} });');
+  clientJsLines.push('      if(!returnsToLabelTool) window.addEventListener("afterprint", function(){ try{ window.close(); }catch(e){} });');
   clientJsLines.push('    }');
   clientJsLines.push('  }');
   clientJsLines.push('  if(document.readyState === "loading"){');
@@ -765,8 +773,8 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
   <style>
     @page { size: 90mm 29mm; margin: 0; }
     * { box-sizing: border-box; }
-    html, body { width: 90mm; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; print-color-adjust: exact; -webkit-print-color-adjust: exact; --fs: 1; --ta: left; --jc: flex-start; --fw: 400; }
+    html, body { width: 90mm; height: 29mm; margin: 0; padding: 0; overflow: hidden; }
+    body { font-family: Arial, sans-serif; print-color-adjust: exact; -webkit-print-color-adjust: exact; --fs: 1; --ta: left; --jc: flex-start; --fw: 400; page-break-after: auto; }
     .bold { --fw: 900; }
     .ha-left { --ta: left; }
     .ha-center { --ta: center; }
@@ -774,24 +782,23 @@ async function buildLabelHtml(input, { includeToolbar = true, allowDirectPrint =
     .va-top { --jc: flex-start; }
     .va-middle { --jc: center; }
     .va-bottom { --jc: flex-end; }
-    .label { width: 90mm; height: 29mm; box-sizing: border-box; padding: 1.2mm 1.4mm; display: flex; gap: 2mm; align-items: flex-start; position: relative; page-break-inside: avoid; break-inside: avoid; }
-    .label { page-break-after: always; }
-    .label:last-child { page-break-after: auto; }
-    .qr { width: 26mm; height: 26mm; background: #fff; padding: 1mm; box-sizing: border-box; border-radius: 1.2mm; }
-    .noqr .label { gap: 0; }
-    .noqr .txt { padding-top: 0; }
-    .noqr.hascust .txt { padding-top: 10.8mm; }
-    .noqr .cust { left: 1.4mm; right: 18.5mm; }
-    .cust { position: absolute; top: 1.1mm; left: 30.2mm; right: 18.5mm; height: 10.2mm; font-size: calc(9.5pt * var(--fs)); font-weight: 800; line-height: 1.05; overflow: hidden; word-break: normal; overflow-wrap: normal; hyphens: none; text-align: var(--ta); }
-    .custline + .custline { margin-top: .2mm; }
-    .txt { flex: 1; min-width: 0; height: 26mm; display: flex; flex-direction: column; justify-content: var(--jc); overflow: hidden; padding-top: 10.8mm; text-align: var(--ta); }
-    .line { font-size: calc(11pt * var(--fs)); line-height: 1.05; white-space: normal; overflow: hidden; text-overflow: clip; word-break: normal; overflow-wrap: normal; hyphens: none; font-weight: var(--fw); }
-    .line + .line { margin-top: .6mm; }
-    .datebox { position: absolute; top: 1.0mm; right: 1.4mm; width: 15.8mm; display: flex; flex-direction: column; align-items: flex-end; gap: .2mm; }
-    .date-prefix { width: 100%; font-size: 5.1pt; font-weight: 500; line-height: .95; color: #4b5563; white-space: normal; overflow: hidden; text-align: right; }
-    .date { position: static; font-size: 13.6pt; font-weight: 800; line-height: 1; background: rgba(255,255,255,.92); padding: .2mm 1.0mm; border-radius: 1.2mm; }
-    .op { position: absolute; bottom: 1.0mm; right: 1.4mm; font-size: 8.5pt; font-weight: 800; line-height: 1; background: rgba(255,255,255,.92); padding: .2mm .9mm; border-radius: 1.2mm; }
-    .pkg { position: absolute; bottom: 0.8mm; left: 1.0mm; min-width: 17mm; text-align: center; font-size: 15pt; font-weight: 900; line-height: 1; color: #fff; background: rgba(17,24,39,.96); border: .45mm solid #fff; padding: .5mm 1.2mm; border-radius: 1.8mm; box-shadow: 0 .8mm 2.2mm rgba(0,0,0,.28); letter-spacing: .02em; }
+    .label { width: 90mm; height: 29mm; box-sizing: border-box; padding: 1mm 1mm; position: relative; page-break-inside: avoid; break-inside: avoid; page-break-after: auto; break-after: auto; }
+    .qr { position: absolute; top: 2.5mm; left: 1mm; width: 24mm; height: 24mm; background: #fff; padding: 0; box-sizing: border-box; }
+    .noqr .label { }
+    .noqr .txt { left: 1mm; }
+    .noqr.hascust .txt { }
+    .noqr .cust { }
+    .cust { display: block; margin-top: 0.2mm; font-size: calc(7.5pt * var(--fs)); font-weight: 800; line-height: 1.05; overflow: hidden; word-break: normal; overflow-wrap: anywhere; hyphens: auto; text-align: var(--ta); }
+    .custline + .custline { margin-top: 0.1mm; }
+    .txt { position: absolute; top: 1mm; left: 27mm; right: 20mm; bottom: 1mm; overflow: hidden; text-align: var(--ta); padding-right: 0.5mm; }
+    .line { font-size: calc(10pt * var(--fs)); line-height: 1.08; white-space: normal; overflow: hidden; word-break: normal; overflow-wrap: anywhere; hyphens: auto; font-weight: var(--fw); }
+    .txt > .line:first-child { font-size: calc(10pt * var(--fs)); font-weight: 800; line-height: 1; }
+    .line + .line { margin-top: 0.4mm; }
+    .datebox { position: absolute; top: 0.6mm; right: 0.9mm; min-width: 18mm; z-index: 5; }
+    .date-prefix { display: none; }
+    .date { font-size: 16pt; font-weight: 900; line-height: 0.95; letter-spacing: -0.01em; background: transparent; padding: 0; margin: 0; text-align: right; }
+    .op { position: absolute; bottom: 0.8mm; right: 0.9mm; font-size: 9pt; font-weight: 900; line-height: 1; background: transparent; padding: 0; }
+    .pkg { position: absolute; bottom: 0.8mm; left: 27mm; font-size: 10pt; font-weight: 900; line-height: 1; letter-spacing: .02em; }
     @media screen {
       html, body { width: auto; min-height: 100%; background: #f3f4f6; }
       body { padding: 16px; }
@@ -833,19 +840,61 @@ function firstExistingPath(candidates) {
 }
 
 function getDirectPrintConfig() {
-  return {
-    edgeExe: firstExistingPath([
+  const IS_WIN = process.platform === 'win32';
+  const IS_LINUX = process.platform === 'linux';
+
+  let browserExe = null;
+  if (IS_WIN) {
+    browserExe = firstExistingPath([
       process.env.DIRECT_PRINT_EDGE_EXE,
-      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
       'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-    ]),
-    sumatraExe: firstExistingPath([
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    ]);
+  } else if (IS_LINUX) {
+    browserExe = firstExistingPath([
+      process.env.DIRECT_PRINT_CHROMIUM_EXE,
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/snap/bin/chromium',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+    ]);
+  }
+
+  let sumatraOrLpExe = null;
+  let sumatraOrLpKind = null;
+  if (IS_WIN) {
+    sumatraOrLpExe = firstExistingPath([
       process.env.DIRECT_PRINT_SUMATRA_EXE,
       'C:\\Program Files\\SumatraPDF\\SumatraPDF.exe',
       path.join(process.env.LOCALAPPDATA || '', 'SumatraPDF', 'SumatraPDF.exe'),
-    ]),
+    ]);
+    sumatraOrLpKind = 'sumatra';
+  } else if (IS_LINUX) {
+    sumatraOrLpExe = firstExistingPath([
+      process.env.DIRECT_PRINT_LP_EXE,
+      '/usr/bin/lp',
+    ]);
+    sumatraOrLpKind = 'lp';
+  }
+
+  const lpstatExe = IS_LINUX ? firstExistingPath([
+    process.env.DIRECT_PRINT_LPSTAT_EXE,
+    '/usr/bin/lpstat',
+  ]) : null;
+
+  return {
+    browserExe,
+    browserKind: IS_WIN ? 'edge' : (IS_LINUX ? 'chromium' : null),
+    edgeExe: browserExe,
+    printExe: sumatraOrLpExe,
+    printKind: sumatraOrLpKind,
+    sumatraExe: IS_WIN ? sumatraOrLpExe : null,
+    lpstatExe,
     printer: String(process.env.DIRECT_PRINT_PRINTER || '').trim(),
-    tempDir: path.join(os.tmpdir(), 'rollladen-monitor-print'),
+    tempDir: String(process.env.DIRECT_PRINT_TEMP_DIR || '').trim()
+      ? String(process.env.DIRECT_PRINT_TEMP_DIR || '').trim()
+      : path.join(os.tmpdir(), 'rollladen-monitor-print'),
   };
 }
 
@@ -873,32 +922,67 @@ function stripPrinterCopySuffix(name) {
   return String(name || '').replace(/\s*\(\s*kopie\s*\d+\s*\)\s*$/i, '').trim();
 }
 
-async function listWindowsPrinters() {
-  if (process.platform !== 'win32') return [];
-  const exe = process.env.SystemRoot
-    ? path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-    : 'powershell.exe';
-  try {
-    const { stdout } = await execFileAsync(
-      exe,
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-Command',
-        'Get-CimInstance Win32_Printer | Select-Object -ExpandProperty Name | ConvertTo-Json -Compress',
-      ],
-      { windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024 }
-    );
-    const raw = String(stdout || '').trim();
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? [parsed] : []);
-    return list.map(s => String(s || '').trim()).filter(Boolean);
-  } catch (e) {
-    return [];
+async function listPrinters() {
+  const cfg = getDirectPrintConfig();
+  if (process.platform === 'win32') {
+    const exe = process.env.SystemRoot
+      ? path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+      : 'powershell.exe';
+    try {
+      const { stdout } = await execFileAsync(
+        exe,
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          'Get-CimInstance Win32_Printer | Select-Object -ExpandProperty Name | ConvertTo-Json -Compress',
+        ],
+        { windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024 }
+      );
+      const raw = String(stdout || '').trim();
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? [parsed] : []);
+      return list.map(s => String(s || '').trim()).filter(Boolean);
+    } catch (e) {
+      return [];
+    }
+  } else if (process.platform === 'linux') {
+    const exe = cfg.lpstatExe || 'lpstat';
+    const cupsEnv = { ...process.env, LC_ALL: 'C', LANG: 'C' };
+    try {
+      const { stdout } = await execFileAsync(
+        exe,
+        ['-p'],
+        { timeout: 10000, maxBuffer: 1024 * 1024, env: cupsEnv }
+      );
+      const lines = String(stdout || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const names = [];
+      for (const l of lines) {
+        const m = l.match(/^printer\s+(\S+)\s+(?:(?:idle|busy|disabled|paused|stopped|processing).*)?$/i);
+        if (m && m[1]) names.push(String(m[1]).trim());
+      }
+      if (!names.length) {
+        try {
+          const { stdout: stdout2 } = await execFileAsync(
+            exe,
+            ['-a'],
+            { timeout: 10000, maxBuffer: 1024 * 1024, env: cupsEnv }
+          );
+          for (const l of String(stdout2 || '').split(/\r?\n/)) {
+            const m2 = l.match(/^(\S+)\s+accepting/);
+            if (m2 && m2[1]) names.push(String(m2[1]).trim());
+          }
+        } catch (_) {}
+      }
+      return Array.from(new Set(names.map(s => String(s || '').trim()).filter(Boolean)));
+    } catch (e) {
+      return [];
+    }
   }
+  return [];
 }
 
 function resolvePrinterName(requested, available) {
@@ -926,50 +1010,83 @@ function resolvePrinterName(requested, available) {
 }
 
 async function printLabelDirect(input) {
-  if (process.platform !== 'win32') {
-    const err = new Error('Direktdruck ist aktuell nur unter Windows aktiviert');
+  const IS_WIN = process.platform === 'win32';
+  const IS_LINUX = process.platform === 'linux';
+  if (!IS_WIN && !IS_LINUX) {
+    const err = new Error('Direktdruck ist aktuell nur unter Windows oder Linux aktiviert');
     err.status = 501;
-    err.details = { platform: process.platform, env: Object.keys(process.env || {}) };
+    err.details = { platform: process.platform, supported: ['win32', 'linux'] };
     throw err;
   }
 
   const cfg = getDirectPrintConfig();
-  if (!cfg.edgeExe) {
-    const err = new Error('Edge nicht gefunden. Setze DIRECT_PRINT_EDGE_EXE oder installiere Microsoft Edge.');
+  if (!cfg.browserExe) {
+    const browserName = IS_WIN ? 'Microsoft Edge' : 'Chromium/Google Chrome';
+    const candidates = IS_WIN
+      ? [
+          process.env.DIRECT_PRINT_EDGE_EXE || '',
+          'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+          'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        ]
+      : [
+          process.env.DIRECT_PRINT_CHROMIUM_EXE || '',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          '/snap/bin/chromium',
+          '/usr/bin/google-chrome',
+        ];
+    const envVar = IS_WIN ? 'DIRECT_PRINT_EDGE_EXE' : 'DIRECT_PRINT_CHROMIUM_EXE';
+    const err = new Error(`${browserName} nicht gefunden. Setze ${envVar} oder installiere ${browserName}.`);
     err.status = 501;
     err.details = {
-      env_DIRECT_PRINT_EDGE_EXE: process.env.DIRECT_PRINT_EDGE_EXE || null,
+      env_var: process.env[envVar] || null,
       envPath: process.env.PATH || null,
-      candidates: [
-        process.env.DIRECT_PRINT_EDGE_EXE || '',
-        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-      ],
+      candidates,
       cfg,
     };
     throw err;
   }
-  if (!cfg.sumatraExe) {
-    const err = new Error('SumatraPDF nicht gefunden. Installiere SumatraPDF oder setze DIRECT_PRINT_SUMATRA_EXE.');
-    err.status = 501;
-    err.details = {
-      env_DIRECT_PRINT_SUMATRA_EXE: process.env.DIRECT_PRINT_SUMATRA_EXE || null,
-      env_LOCALAPPDATA: process.env.LOCALAPPDATA || null,
-      candidates: [
-        process.env.DIRECT_PRINT_SUMATRA_EXE || '',
-        'C:\\Program Files\\SumatraPDF\\SumatraPDF.exe',
-        path.join(process.env.LOCALAPPDATA || '', 'SumatraPDF', 'SumatraPDF.exe'),
-      ],
-      cfg,
-    };
-    throw err;
+  const needsPrint = !!(
+    String(input?.printer || '').trim() ||
+    input?.allowDirectPrint === true
+  );
+  const holdJob = !!(input && input.holdJob);
+
+  if (needsPrint && !cfg.printExe) {
+    if (IS_WIN) {
+      const err = new Error('SumatraPDF nicht gefunden. Installiere SumatraPDF oder setze DIRECT_PRINT_SUMATRA_EXE.');
+      err.status = 501;
+      err.details = {
+        env_DIRECT_PRINT_SUMATRA_EXE: process.env.DIRECT_PRINT_SUMATRA_EXE || null,
+        env_LOCALAPPDATA: process.env.LOCALAPPDATA || null,
+        candidates: [
+          process.env.DIRECT_PRINT_SUMATRA_EXE || '',
+          'C:\\Program Files\\SumatraPDF\\SumatraPDF.exe',
+          path.join(process.env.LOCALAPPDATA || '', 'SumatraPDF', 'SumatraPDF.exe'),
+        ],
+        cfg,
+      };
+      throw err;
+    } else if (IS_LINUX) {
+      const err = new Error('CUPS "lp" Kommando nicht gefunden. Installiere cups + cups-client oder setze DIRECT_PRINT_LP_EXE.');
+      err.status = 501;
+      err.details = {
+        env_DIRECT_PRINT_LP_EXE: process.env.DIRECT_PRINT_LP_EXE || null,
+        candidates: [process.env.DIRECT_PRINT_LP_EXE || '', '/usr/bin/lp'],
+        hint: 'sudo apt install -y cups cups-client',
+        cfg,
+      };
+      throw err;
+    }
   }
 
   let accessErrors = [];
-  try { await fs.promises.access(cfg.edgeExe, fs.constants.R_OK); }
-  catch (e) { accessErrors.push('edgeExe "' + cfg.edgeExe + '" nicht lesbar: ' + (e && (e.code || e.message) ? String(e.code || e.message) : String(e))); }
-  try { await fs.promises.access(cfg.sumatraExe, fs.constants.R_OK); }
-  catch (e) { accessErrors.push('sumatraExe "' + cfg.sumatraExe + '" nicht lesbar: ' + (e && (e.code || e.message) ? String(e.code || e.message) : String(e))); }
+  try { await fs.promises.access(cfg.browserExe, fs.constants.R_OK); }
+  catch (e) { accessErrors.push('browserExe "' + cfg.browserExe + '" nicht lesbar: ' + (e && (e.code || e.message) ? String(e.code || e.message) : String(e))); }
+  if (needsPrint && cfg.printExe) {
+    try { await fs.promises.access(cfg.printExe, fs.constants.R_OK); }
+    catch (e) { accessErrors.push('printExe "' + cfg.printExe + '" nicht lesbar: ' + (e && (e.code || e.message) ? String(e.code || e.message) : String(e))); }
+  }
   if (accessErrors.length) {
     const err = new Error('Direktdruck fehlgeschlagen (EXE nicht lesbar). ' + accessErrors.join(' | '));
     err.status = 500;
@@ -977,40 +1094,55 @@ async function printLabelDirect(input) {
     throw err;
   }
 
-  const requestedPrinter = String(input && input.printer || cfg.printer || '').trim();
+  let requestedPrinter = '';
   let availablePrinters = [];
-  try {
-    availablePrinters = await listWindowsPrinters();
-  } catch (e) {
-    availablePrinters = [];
-  }
-  if (availablePrinters.length === 0) {
-    const err = new Error('Direktdruck fehlgeschlagen: Keine Windows-Drucker für den Node-Prozess sichtbar. Wahrscheinliche Ursache: Node läuft als Windows-Dienst (Session0-Isolation). Node muss in einer echten User-Session laufen (Taskplaner: "Nur ausführen wenn Benutzer angemeldet ist" oder Autostart-Ordner statt Dienst).');
-    err.status = 500;
-    err.details = {
-      stage: 'listPrintersEmpty',
-      requestedPrinter: requestedPrinter || null,
-      sessionName: process.env.SESSIONNAME || null,
-      username: process.env.USERNAME || null,
-      localAppData: process.env.LOCALAPPDATA || null,
-      serviceHint: 'If the Node process is started via "sc.exe create" / Services / Task Scheduler "Run whether user is logged on or not", Win32 PrintAPI is blocked in Session 0. Use Task Scheduler "Run only when user is logged on" or launch from Startup folder.',
-    };
-    throw err;
-  }
-  if (requestedPrinter) {
-    const resolved = resolvePrinterName(requestedPrinter, availablePrinters);
-    const matches = availablePrinters.some(p => normalizePrinterName(p) === normalizePrinterName(resolved.printer)) || availablePrinters.includes(resolved.printer);
-    if (!matches) {
-      const err = new Error(`Direktdruck fehlgeschlagen: Konfigurierter Drucker "${requestedPrinter}" existiert unter den sichtbaren Druckern nicht (${availablePrinters.length} Drucker gefunden).`);
-      err.status = 500;
-      err.details = {
-        stage: 'resolvePrinterMissing',
-        requestedPrinter,
-        resolvedFrom: resolved.resolvedFrom || null,
-        printerResolved: resolved.printer || null,
-        availablePrintersPreview: availablePrinters.slice(0, 50),
+  if (needsPrint) {
+    requestedPrinter = String(input && input.printer || cfg.printer || '').trim();
+    try {
+      availablePrinters = await listPrinters();
+    } catch (e) {
+      availablePrinters = [];
+    }
+    if (availablePrinters.length === 0) {
+      const details = {
+        stage: 'listPrintersEmpty',
+        requestedPrinter: requestedPrinter || null,
+        platform: process.platform,
       };
+      if (IS_WIN) {
+        details.sessionName = process.env.SESSIONNAME || null;
+        details.username = process.env.USERNAME || null;
+        details.localAppData = process.env.LOCALAPPDATA || null;
+        details.serviceHint = 'If the Node process is started via "sc.exe create" / Services / Task Scheduler "Run whether user is logged on or not", Win32 PrintAPI is blocked in Session 0. Use Task Scheduler "Run only when user is logged on" or launch from Startup folder.';
+      }
+      if (IS_LINUX) {
+        details.lpstat = cfg.lpstatExe;
+        details.hint = 'sudo apt install -y cups cups-client && sudo usermod -aG lpadmin rollladen && sudo lpstat -p';
+        details.env_user = process.env.USER || process.env.LOGNAME || null;
+      }
+      const msgSuffix = IS_WIN
+        ? 'Keine Windows-Drucker für den Node-Prozess sichtbar. Wahrscheinliche Ursache: Node läuft als Windows-Dienst (Session0-Isolation). Node muss in einer echten User-Session laufen (Taskplaner: "Nur ausführen wenn Benutzer angemeldet ist" oder Autostart-Ordner statt Dienst).'
+        : 'Keine CUPS-Drucker sichtbar. Wahrscheinliche Ursache: CUPS nicht installiert, Service nicht gestartet oder Systemuser nicht in lp Gruppe (sudo usermod -aG lp,lpadmin rollladen). Drucker via "sudo lpadmin -p ... -E" anlegen.';
+      const err = new Error('Direktdruck fehlgeschlagen: ' + msgSuffix);
+      err.status = 500;
+      err.details = details;
       throw err;
+    }
+    if (requestedPrinter) {
+      const resolved = resolvePrinterName(requestedPrinter, availablePrinters);
+      const matches = availablePrinters.some(p => normalizePrinterName(p) === normalizePrinterName(resolved.printer)) || availablePrinters.includes(resolved.printer);
+      if (!matches) {
+        const err = new Error(`Direktdruck fehlgeschlagen: Konfigurierter Drucker "${requestedPrinter}" existiert unter den sichtbaren Druckern nicht (${availablePrinters.length} Drucker gefunden).`);
+        err.status = 500;
+        err.details = {
+          stage: 'resolvePrinterMissing',
+          requestedPrinter,
+          resolvedFrom: resolved.resolvedFrom || null,
+          printerResolved: resolved.printer || null,
+          availablePrintersPreview: availablePrinters.slice(0, 50),
+        };
+        throw err;
+      }
     }
   }
 
@@ -1063,96 +1195,307 @@ async function printLabelDirect(input) {
     throw err;
   }
 
-  const edgeArgs = [
-    '--headless=new',
-    '--disable-gpu',
-    '--allow-file-access-from-files',
-    `--print-to-pdf=${pdfPath}`,
-    '--print-to-pdf-no-header',
-    pathToFileURL(htmlPath).href,
-  ];
+  const profileDirsToClean = [];
+
   try {
-    await execFileAsync(
-      cfg.edgeExe,
-      edgeArgs,
-      { windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024 }
-    );
-    await waitForFile(pdfPath, 20000);
-  } catch (e) {
-    let pdfStats = null;
-    try {
-      const st = await fs.promises.stat(pdfPath);
-      pdfStats = { exists: true, size: st.size, mtime: st.mtime ? String(st.mtime) : null };
-    } catch (_) {
-      pdfStats = { exists: false };
+    const cutoffMs = 180 * 1000;
+    const now = Date.now();
+    if (IS_WIN) {
+      try {
+        const procs = require('child_process').execSync(
+          'wmic process where "name=\'msedge.exe\' and CommandLine like \'%--headless%\'" get ProcessId,CreationDate /format:csv',
+          { windowsHide: true, timeout: 8000, encoding: 'utf8' }
+        );
+        for (const line of String(procs || '').split(/\r?\n/)) {
+          const cols = line.split(',').filter(Boolean);
+          if (cols.length >= 3 && /^\d+$/.test(cols[cols.length - 1])) {
+            const pid = parseInt(cols[cols.length - 1], 10);
+            const cd = String(cols[cols.length - 2] || '');
+            const m = cd.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+            if (m) {
+              const started = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
+              if (started && now - started > cutoffMs) {
+                try { process.kill(pid, 'SIGTERM'); } catch (_) {
+                  try { require('child_process').execSync(`taskkill /PID ${pid} /F /T`, { windowsHide: true, timeout: 4000 }); } catch (__) {}
+                }
+              }
+            } else if (pid && !isNaN(pid)) {
+              try { require('child_process').execSync(`taskkill /PID ${pid} /F /T`, { windowsHide: true, timeout: 4000 }); } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
+    } else if (IS_LINUX) {
+      try {
+        const { stdout } = await execFileAsync(
+          '/bin/ps',
+          ['-eo', 'pid,etimes,args', '--no-headers'],
+          { timeout: 8000, maxBuffer: 2 * 1024 * 1024 }
+        );
+        for (const line of String(stdout || '').split(/\r?\n/)) {
+          const lineTrim = String(line || '').replace(/\s+/g, ' ').trim();
+          if (!lineTrim) continue;
+          const parts = lineTrim.split(' ');
+          if (parts.length < 3) continue;
+          const pidS = parts.shift() || '';
+          const etimesS = parts.shift() || '';
+          const args = parts.join(' ');
+          if (!/^\d+$/.test(pidS) || !/^\d+$/.test(etimesS)) continue;
+          if (!/chrom|chrome/i.test(args) || !/--headless/.test(args)) continue;
+          const pid = parseInt(pidS, 10);
+          const etimes = parseInt(etimesS, 10);
+          if (!isNaN(pid) && !isNaN(etimes) && etimes * 1000 > cutoffMs) {
+            try { process.kill(pid, 'SIGTERM'); } catch (_) {
+              try { require('child_process').execSync(`kill -9 ${pid} 2>/dev/null`, { timeout: 4000 }); } catch (__) {}
+            }
+          }
+        }
+      } catch (_) {}
     }
-    const msg = e && e.message && /timed?\s*out/i.test(String(e.message))
-      ? 'Direktdruck fehlgeschlagen (PDF-Generierung: Edge-Timeout).'
-      : 'Direktdruck fehlgeschlagen (PDF-Generierung: Edge konnte PDF nicht erzeugen).';
+  } catch (_) {}
+
+  let pdfProduced = false;
+  let pdfStatsFinal = { exists: false };
+  let lastErr = null;
+  let lastAttemptDetails = null;
+  let browserProfileDir = '';
+
+  for (let attempt = 1; attempt <= 3 && !pdfProduced; attempt++) {
+    try {
+      await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 0 : 1500));
+      if (attempt > 1) {
+        try {
+          const st = await fs.promises.stat(pdfPath);
+          if (st && st.size > 2000) {
+            pdfProduced = true;
+            pdfStatsFinal = { exists: true, size: st.size, mtime: st.mtime ? String(st.mtime) : null };
+            break;
+          }
+        } catch (_) {}
+      }
+      const pdfPathAttempt = attempt === 1 ? pdfPath : path.join(cfg.tempDir, `label-${stamp}-r${attempt}.pdf`);
+      const browserProfileDirAttempt = path.join(cfg.tempDir, `browser-profile-${stamp}-r${attempt}`);
+      try { await fs.promises.mkdir(browserProfileDirAttempt, { recursive: true }); } catch (_) {}
+      if (!profileDirsToClean.includes(browserProfileDirAttempt)) profileDirsToClean.push(browserProfileDirAttempt);
+      browserProfileDir = browserProfileDirAttempt;
+
+      const headlessFlag = (attempt < 3) ? '--headless=new' : '--headless';
+      const baseArgs = [
+        `--user-data-dir=${browserProfileDirAttempt}`,
+        headlessFlag,
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-extensions',
+        '--disable-sync',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-client-side-phishing-detection',
+        '--disable-default-apps',
+        '--disable-hang-monitor',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--metrics-recording-only',
+        '--safebrowsing-disable-auto-update',
+        '--password-store=basic',
+        '--use-mock-keychain',
+        '--disable-component-extensions-with-background-pages',
+        '--allow-file-access-from-files',
+        `--print-to-pdf=${pdfPathAttempt}`,
+        '--print-to-pdf-no-header',
+        '--enable-logging=stderr',
+        '--log-level=0',
+        pathToFileURL(htmlPath).href,
+      ];
+      const browserArgs = IS_WIN
+        ? [
+            ...baseArgs,
+            '--disable-features=EdgeIdentityTokenBinding,EdgeIdentity,msEdgeIdentityService,EdgeProfilePicker,EdgeShoppingAssistant,EdgeCollections,EdgeReadAloud,EdgeSleepingTabs,EdgeResourceSaver,msEdgeKidsManagement,EdgePersonalization,EdgeSurf',
+          ]
+        : baseArgs;
+
+      lastAttemptDetails = {
+        attempt,
+        pdfPathAttempt,
+        browserArgs,
+        browserKind: cfg.browserKind,
+      };
+
+      const execOpts = IS_WIN
+        ? { windowsHide: true, timeout: 60000, maxBuffer: 2 * 1024 * 1024 }
+        : { timeout: 60000, maxBuffer: 2 * 1024 * 1024 };
+      await execFileAsync(
+        cfg.browserExe,
+        browserArgs,
+        execOpts
+      );
+
+      await waitForFile(pdfPathAttempt, 45000);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      try {
+        const st = await fs.promises.stat(pdfPathAttempt);
+        if (st && st.size > 2000) {
+          if (attempt > 1) {
+            try { await fs.promises.rename(pdfPathAttempt, pdfPath); } catch (_) {}
+          }
+          pdfProduced = true;
+          pdfStatsFinal = { exists: true, size: st.size, mtime: st.mtime ? String(st.mtime) : null };
+          break;
+        } else {
+          const err = new Error('PDF Datei zu klein oder leer (< 2000 Bytes)');
+          err.exitCode = null;
+          err.stderr = '';
+          err.stdout = '';
+          lastErr = err;
+        }
+      } catch (se) {
+        lastErr = se;
+      }
+    } catch (e) {
+      lastErr = e;
+      try {
+        const st = await fs.promises.stat(pdfPath);
+        if (st && st.size > 2000) {
+          pdfProduced = true;
+          pdfStatsFinal = { exists: true, size: st.size, mtime: st.mtime ? String(st.mtime) : null };
+          break;
+        } else {
+          pdfStatsFinal = st ? { exists: true, size: st.size, mtime: st.mtime ? String(st.mtime) : null } : { exists: false };
+        }
+      } catch (_) { pdfStatsFinal = { exists: false }; }
+    }
+  }
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    for (const dir of profileDirsToClean) {
+      try { await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 3 }); } catch (_) {}
+    }
+  } catch (_) {}
+
+  if (!pdfProduced) {
+    const browserName = IS_WIN ? 'Edge' : 'Chromium';
+    const stage = IS_WIN ? 'edgeHeadlessPdf' : 'chromiumHeadlessPdf';
+    const isTimeout = lastErr && lastErr.message && /timed?\s*out/i.test(String(lastErr.message));
+    const msg = isTimeout
+      ? `Direktdruck fehlgeschlagen (PDF-Generierung: ${browserName}-Timeout nach 3 Versuchen).`
+      : `Direktdruck fehlgeschlagen (PDF-Generierung: ${browserName} konnte PDF nicht erzeugen nach 3 Versuchen).`;
     const err = new Error(msg);
     err.status = 500;
     err.details = {
-      stage: 'edgeHeadlessPdf',
+      stage,
+      note: '3 Versuche durchgelaufen. Zombie-Killer, sep. Browser-Profile, Retry-Logik aktiv.',
+      browserExe: cfg.browserExe,
+      browserKind: cfg.browserKind,
       edgeExe: cfg.edgeExe,
-      edgeArgs,
+      browserProfileDir,
       htmlPath,
       pdfPath,
-      pdfStats,
+      pdfStats: pdfStatsFinal,
       tempDir: cfg.tempDir,
       inputSummary,
-      exitCode: typeof e?.code === 'number' ? e.code : null,
-      signal: typeof e?.signal === 'string' ? e.signal : null,
-      stdout: typeof e?.stdout === 'string' ? e.stdout.slice(-2000) : null,
-      stderr: typeof e?.stderr === 'string' ? e.stderr.slice(-2000) : null,
-      message: e?.message || String(e),
-      code: e?.code || null,
+      lastAttempt: lastAttemptDetails,
+      exitCode: typeof lastErr?.code === 'number' ? lastErr.code : null,
+      signal: typeof lastErr?.signal === 'string' ? lastErr.signal : null,
+      stdout: typeof lastErr?.stdout === 'string' ? lastErr.stdout.slice(-2000) : null,
+      stderr: typeof lastErr?.stderr === 'string' ? lastErr.stderr.slice(-2000) : null,
+      message: lastErr?.message || String(lastErr || 'kein fehler'),
+      code: lastErr?.code || null,
     };
     throw err;
   }
 
-  let printer = requestedPrinter;
+  let printer = '';
   let resolvedFrom = '';
-  if (printer) {
-    const resolved = resolvePrinterName(printer, availablePrinters);
-    printer = resolved.printer;
-    resolvedFrom = resolved.resolvedFrom;
-  }
-  const args = ['-silent'];
-  if (printer) args.push('-print-to', printer);
-  else args.push('-print-to-default');
-  args.push(pdfPath);
-  try {
-    await execFileAsync(cfg.sumatraExe, args, { windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024 });
-  } catch (e) {
-    const shown = availablePrinters.slice(0, 8);
-    const hint = printer
-      ? `Drucker "${printer}" nicht druckbereit oder Name falsch.`
-      : 'Kein Drucker gesetzt und Standarddrucker nicht druckbereit.';
-    const msg = [
-      'Direktdruck fehlgeschlagen (SumatraPDF).',
-      hint,
-      shown.length ? ('Verfügbare Drucker: ' + shown.join(' | ')) : '',
-    ].filter(Boolean).join(' ');
-    const err = new Error(msg);
-    err.status = 500;
-    err.details = {
-      stage: 'sumatraPrint',
-      sumatraExe: cfg.sumatraExe,
-      args,
-      requestedPrinter: requestedPrinter || null,
-      printer: printer || null,
-      resolvedFrom: resolvedFrom || null,
-      exitCode: typeof e?.code === 'number' ? e.code : null,
-      signal: typeof e?.signal === 'string' ? e.signal : null,
-      stdout: typeof e?.stdout === 'string' ? e.stdout.slice(-2000) : null,
-      stderr: typeof e?.stderr === 'string' ? e.stderr.slice(-2000) : null,
-      pdfPath,
-      tempDir: cfg.tempDir,
-      availablePrinters: availablePrinters.slice(0, 50),
-      inputSummary,
-      message: e?.message || String(e),
-    };
-    throw err;
+  if (needsPrint) {
+    printer = requestedPrinter;
+    if (printer) {
+      const resolved = resolvePrinterName(printer, availablePrinters);
+      printer = resolved.printer;
+      resolvedFrom = resolved.resolvedFrom;
+    }
+    if (IS_WIN) {
+      const args = ['-silent'];
+      if (printer) args.push('-print-to', printer);
+      else args.push('-print-to-default');
+      args.push(pdfPath);
+      try {
+        await execFileAsync(cfg.printExe, args, { windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024 });
+      } catch (e) {
+        const shown = availablePrinters.slice(0, 8);
+        const hint = printer
+          ? `Drucker "${printer}" nicht druckbereit oder Name falsch.`
+          : 'Kein Drucker gesetzt und Standarddrucker nicht druckbereit.';
+        const msg = [
+          'Direktdruck fehlgeschlagen (SumatraPDF).',
+          hint,
+          shown.length ? ('Verfügbare Drucker: ' + shown.join(' | ')) : '',
+        ].filter(Boolean).join(' ');
+        const err = new Error(msg);
+        err.status = 500;
+        err.details = {
+          stage: 'sumatraPrint',
+          sumatraExe: cfg.printExe,
+          args,
+          requestedPrinter: requestedPrinter || null,
+          printer: printer || null,
+          resolvedFrom: resolvedFrom || null,
+          exitCode: typeof e?.code === 'number' ? e.code : null,
+          signal: typeof e?.signal === 'string' ? e.signal : null,
+          stdout: typeof e?.stdout === 'string' ? e.stdout.slice(-2000) : null,
+          stderr: typeof e?.stderr === 'string' ? e.stderr.slice(-2000) : null,
+          pdfPath,
+          tempDir: cfg.tempDir,
+          availablePrinters: availablePrinters.slice(0, 50),
+          inputSummary,
+          message: e?.message || String(e),
+        };
+        throw err;
+      }
+    } else if (IS_LINUX) {
+      const args = ['-o', 'job-sheets=none,none'];
+      if (holdJob) args.push('-o', 'job-hold-until=indefinite');
+      if (printer) args.unshift('-d', printer);
+      args.push(pdfPath);
+      try {
+        await execFileAsync(cfg.printExe, args, { timeout: 30000, maxBuffer: 1024 * 1024, env: { ...process.env, LC_ALL: 'C', LANG: 'C' } });
+      } catch (e) {
+        const shown = availablePrinters.slice(0, 8);
+        const hint = printer
+          ? `Drucker "${printer}" nicht druckbereit oder CUPS Queue Name falsch. Prüfe: lpstat -p, falls nicht aktiv: sudo cupsenable ${printer}`
+          : 'Kein Drucker gesetzt (DIRECT_PRINT_PRINTER env) und Standarddrucker nicht druckbereit.';
+        const msg = [
+          'Direktdruck fehlgeschlagen (CUPS/lp).',
+          hint,
+          shown.length ? ('Verfügbare Drucker: ' + shown.join(' | ')) : '',
+        ].filter(Boolean).join(' ');
+        const err = new Error(msg);
+        err.status = 500;
+        err.details = {
+          stage: 'lpPrint',
+          lpExe: cfg.printExe,
+          lpstatExe: cfg.lpstatExe,
+          args,
+          requestedPrinter: requestedPrinter || null,
+          printer: printer || null,
+          resolvedFrom: resolvedFrom || null,
+          cupsHint: 'Troubleshoot: sudo lpstat -t; sudo lpq -a; sudo cupsenable ${printer}',
+          exitCode: typeof e?.code === 'number' ? e.code : null,
+          signal: typeof e?.signal === 'string' ? e.signal : null,
+          stdout: typeof e?.stdout === 'string' ? e.stdout.slice(-2000) : null,
+          stderr: typeof e?.stderr === 'string' ? e.stderr.slice(-2000) : null,
+          pdfPath,
+          tempDir: cfg.tempDir,
+          availablePrinters: availablePrinters.slice(0, 50),
+          inputSummary,
+          message: e?.message || String(e),
+        };
+        throw err;
+      }
+    }
   }
 
   setTimeout(() => {
@@ -1160,7 +1503,10 @@ async function printLabelDirect(input) {
     try { fs.unlinkSync(pdfPath); } catch (e) {}
   }, 15 * 60 * 1000);
 
-  return { ok: true, printer: printer || '(Standarddrucker)', resolvedFrom: resolvedFrom || null };
+  if (needsPrint) {
+    return { ok: true, printer: printer || '(Standarddrucker)', resolvedFrom: resolvedFrom || null, platform: process.platform, printKind: cfg.printKind, holdJob: holdJob || false };
+  }
+  return { ok: true, pdfOnly: true, pdfPath, tempDir: cfg.tempDir, platform: process.platform, browserKind: cfg.browserKind };
 }
 
 router.get('/label', async (req, res, next) => {
@@ -1177,6 +1523,9 @@ router.get('/label', async (req, res, next) => {
 });
 
 router.post('/label/direct-print', express.json(), async (req, res) => {
+  const IS_WIN = process.platform === 'win32';
+  const IS_LINUX = process.platform === 'linux';
+  const TIMEOUT_COMP = IS_WIN ? 'Edge/SumatraPDF' : 'Chromium/CUPS (lp)';
   const startedAt = Date.now();
   let responded = false;
   const timeoutMs = 80000;
@@ -1186,7 +1535,7 @@ router.post('/label/direct-print', express.json(), async (req, res) => {
     try {
       res.status(504).json({
         ok: false,
-        error: 'Direktdruck-Timeout nach ' + Math.round(timeoutMs/1000) + 's: Server- Prozess (Edge/SumatraPDF) hängt. Bitte Prozess auf Server-PC beenden.',
+        error: 'Direktdruck-Timeout nach ' + Math.round(timeoutMs/1000) + 's: Server- Prozess (' + TIMEOUT_COMP + ') hängt. Bitte Prozess auf Server-PC beenden.',
         details: {
           stage: 'serverTimeout',
           afterMs: timeoutMs,
@@ -1225,6 +1574,9 @@ router.post('/label/direct-print', express.json(), async (req, res) => {
 });
 
 router.get('/label/direct-print', async (req, res) => {
+  const IS_WIN = process.platform === 'win32';
+  const IS_LINUX = process.platform === 'linux';
+  const TIMEOUT_COMP = IS_WIN ? 'Edge/SumatraPDF' : 'Chromium/CUPS (lp)';
   const startedAt = Date.now();
   let responded = false;
   const timeoutMs = 80000;
@@ -1234,7 +1586,7 @@ router.get('/label/direct-print', async (req, res) => {
     try {
       res.status(504).json({
         ok: false,
-        error: 'Direktdruck-Timeout nach ' + Math.round(timeoutMs/1000) + 's: Server- Prozess (Edge/SumatraPDF) hängt.',
+        error: 'Direktdruck-Timeout nach ' + Math.round(timeoutMs/1000) + 's: Server- Prozess (' + TIMEOUT_COMP + ') hängt.',
         details: { stage: 'serverTimeout', afterMs: timeoutMs, inputSummary: { fields: Object.keys(req.query || {}) } },
       });
     } catch (e) {}
@@ -1268,14 +1620,17 @@ router.get('/label-print-config', (req, res) => {
 });
 
 router.get('/print-health', async (req, res) => {
+  const IS_WIN = process.platform === 'win32';
+  const IS_LINUX = process.platform === 'linux';
   const cfg = getDirectPrintConfig();
-  const edgeExists = cfg.edgeExe ? fs.existsSync(cfg.edgeExe) : false;
-  const sumatraExists = cfg.sumatraExe ? fs.existsSync(cfg.sumatraExe) : false;
+  const browserExists = cfg.browserExe ? fs.existsSync(cfg.browserExe) : false;
+  const printExists = cfg.printExe ? fs.existsSync(cfg.printExe) : false;
+  const lpstatExists = cfg.lpstatExe ? fs.existsSync(cfg.lpstatExe) : false;
   let printers = [];
   let printersErr = null;
   let printersCount = 0;
   try {
-    printers = await listWindowsPrinters();
+    printers = await listPrinters();
     printersCount = printers.length;
   } catch (e) {
     printersErr = { message: e && e.message ? String(e.message) : String(e), code: e && e.code ? String(e.code) : null, name: e && e.name ? String(e.name) : null };
@@ -1297,42 +1652,103 @@ router.get('/print-health', async (req, res) => {
     resolvedPrinter = resolved.printer;
     resolvedFrom = resolved.resolvedFrom;
   }
-  const sessionHint = (process.platform === 'win32' && !printersCount)
+
+  let linuxSession = null;
+  let winSession = null;
+  let cupsStatus = null;
+  if (IS_LINUX) {
+    linuxSession = {
+      user: process.env.USER || process.env.LOGNAME || null,
+      uid: typeof process.getuid === 'function' ? String(process.getuid()) : null,
+      gid: typeof process.getgid === 'function' ? String(process.getgid()) : null,
+      shell: process.env.SHELL || null,
+      home: process.env.HOME || null,
+    };
+    try {
+      const { stdout } = await execFileAsync(
+        'systemctl',
+        ['is-active', 'cups', '--no-pager'],
+        { timeout: 8000 }
+      ).catch(() => ({ stdout: 'unknown' }));
+      cupsStatus = {
+        service: String((stdout || 'unknown') || '').trim().split(/\r?\n/)[0] || 'unknown',
+        lpstatInstalled: lpstatExists,
+      };
+      if (lpstatExists) {
+        try {
+          const lps = await execFileAsync(cfg.lpstatExe || 'lpstat', ['-r'], { timeout: 8000, env: { ...process.env, LC_ALL: 'C', LANG: 'C' } });
+          cupsStatus.lpstatR = String(lps.stdout || '').trim();
+        } catch (_) {}
+      }
+    } catch (_) {}
+  } else if (IS_WIN) {
+    winSession = {
+      sessionName: process.env.SESSIONNAME || null,
+      username: process.env.USERNAME || null,
+      userdomain: process.env.USERDOMAIN || null,
+      localAppData: process.env.LOCALAPPDATA || null,
+    };
+  }
+  const sessionHint = (IS_WIN && !printersCount)
     ? 'Achtung: Keine Drucker gelistet. Läuft Node als Windows-Dienst (Session0)? Diensten ist Drucken per Win32-PrintAPI meist verboten. Startet Node in einer echten User-Session (z.B. Autostart-Ordner, Taskplaner "Run whether user is logged on or not" deaktivieren, oder "Nur ausführen wenn Benutzer angemeldet ist" aktivieren).'
-    : '';
-  const winSession = process.platform === 'win32' ? {
-    sessionName: process.env.SESSIONNAME || null,
-    username: process.env.USERNAME || null,
-    userdomain: process.env.USERDOMAIN || null,
-    localAppData: process.env.LOCALAPPDATA || null,
-  } : null;
+    : (IS_LINUX && !printersCount)
+      ? 'Achtung: Keine Drucker gelistet. Falls CUPS installiert: sudo usermod -aG lp,lpadmin rollladen; sudo systemctl enable --now cups; Drucker anlegen: sudo lpadmin -p Brother... -v socket://<IP>:9100 -m <PPD> -E. Test: lpstat -p -d'
+      : '';
+  const browserHint = browserExists
+    ? ''
+    : (IS_WIN
+        ? 'Edge nicht gefunden. Installiere Microsoft Edge (stable) oder setze DIRECT_PRINT_EDGE_EXE auf den vollen Pfad zu msedge.exe.'
+        : 'Chromium nicht gefunden. Installiere: sudo apt install -y chromium-browser (oder chromium) oder setze DIRECT_PRINT_CHROMIUM_EXE.');
+  const printHint = printExists
+    ? ''
+    : (IS_WIN
+        ? 'SumatraPDF nicht gefunden. Installiere SumatraPDF (https://www.sumatrapdfreader.org/download-free-pdf-viewer) oder setze DIRECT_PRINT_SUMATRA_EXE.'
+        : 'CUPS "lp" nicht gefunden. Installiere: sudo apt install -y cups cups-client oder setze DIRECT_PRINT_LP_EXE=/usr/bin/lp.');
+  const platformCompatHint = IS_WIN || IS_LINUX
+    ? ''
+    : 'Direktdruck ist aktuell nur unter Windows und Linux implementiert.';
+  const printerConfigHint = requestedPrinter
+    ? (printersCount
+        ? (resolvedPrinter ? '' : `Config-Drucker "${requestedPrinter}" wurde in den Druckern NICHT gefunden. Prüfe DIRECT_PRINT_PRINTER-Wert und/oder Druckerliste unten.`)
+        : '')
+    : (IS_WIN
+        ? 'Kein fester Drucker per DIRECT_PRINT_PRINTER gesetzt. Es wird auf den Windows-Standarddrucker gedruckt.'
+        : 'Kein fester Drucker per DIRECT_PRINT_PRINTER gesetzt. Es wird auf den CUPS-Standarddrucker gedruckt (falls gesetzt).');
+  const tempHint = tmpDirOk ? '' : 'Temp-Verzeichnis nicht beschreibbar (benötigt für HTML/PDF-Dateien).';
   res.json({
     ok: true,
     platform: process.platform,
-    nodeAsUser: winSession,
+    nodeAsUser: winSession || linuxSession,
     pid: process.pid,
     directPrint: {
+      browserExe: cfg.browserExe || null,
+      browserKind: cfg.browserKind,
       edgeExe: cfg.edgeExe || null,
-      edgeExists,
+      browserExists,
+      printExe: cfg.printExe || null,
+      printKind: cfg.printKind,
       sumatraExe: cfg.sumatraExe || null,
-      sumatraExists,
+      printExists,
+      lpstatExe: cfg.lpstatExe || null,
+      lpstatExists,
       printerEnv: requestedPrinter || null,
       printerResolved: resolvedPrinter || null,
       printerResolvedFrom: resolvedFrom || null,
       tempDir: cfg.tempDir,
-      tempDirOk,
-      tempDirErr,
+      tempDirOk: tmpDirOk,
+      tempDirErr: tmpDirErr,
     },
+    cups: cupsStatus,
     printersCount,
     printersPreview: printers.slice(0, 50),
     printersErr,
     hints: [
-      edgeExists ? '' : 'Edge nicht gefunden. Installiere Microsoft Edge (stable) oder setze DIRECT_PRINT_EDGE_EXE auf den vollen Pfad zu msedge.exe.',
-      sumatraExists ? '' : 'SumatraPDF nicht gefunden. Installiere SumatraPDF (https://www.sumatrapdfreader.org/download-free-pdf-viewer) oder setze DIRECT_PRINT_SUMATRA_EXE.',
-      (process.platform === 'win32') ? '' : 'Direktdruck ist nur unter Windows implementiert.',
-      requestedPrinter ? (printersCount ? (resolvedPrinter ? '' : `Config-Drucker "${requestedPrinter}" wurde in den Windows-Druckern NICHT gefunden. Prüfe DIRECT_PRINT_PRINTER - Wert und/oder Druckerliste unten.`) : '') : 'Kein fester Drucker per DIRECT_PRINT_PRINTER gesetzt. Es wird auf den Windows-Standarddrucker gedruckt.',
+      browserHint,
+      printHint,
+      platformCompatHint,
+      printerConfigHint,
       sessionHint,
-      tmpDirOk ? '' : 'Temp-Verzeichnis nicht beschreibbar (benötigt für HTML/PDF-Dateien).',
+      tempHint,
     ].filter(Boolean),
   });
 });
@@ -1419,6 +1835,111 @@ router.get('/materials', (req, res) => {
         .concat(Array.isArray(b.later) ? b.later : []);
     }
 
+    function detectShopifyColorBrowser(text) {
+      const t = String(text || '').toLowerCase();
+      if (/(ral\\s*7016|anthrazitgrau|anthrazit\\s+grau)/i.test(t)) return 'Anthrazitgrau (RAL 7016)';
+      if (/(ral\\s*9006|schwarz\\s*grau|schwarzgrau|\\banthrazit\\b)/i.test(t)) return 'Anthrazit (RAL 9006)';
+        if (/(ral\\s*9001|creme[-\\s]*wei(?:ß|ss))/i.test(t)) return 'Cremeweiß (= RAL 9001)';
+        if (/(ral\\s*9002|grau[-\\s]*wei(?:ß|ss))/i.test(t)) return 'Grauweiß (= RAL 9002)';
+        if (/(ral\\s*1013|perl[-\\s]*wei(?:ß|ss))/i.test(t)) return 'Perlweiß (= RAL 1013)';
+        if (/antik[-\\s]*wei(?:ß|ss)/i.test(t)) return 'Antikweiß';
+        if (/alt[-\\s]*wei(?:ß|ss)/i.test(t)) return 'Altweiß';
+        if (/rein[-\\s]*wei(?:ß|ss)/i.test(t)) return 'Reinweiß';
+        if (/(ral\\s*9016|verkehrswei(?:ß|ss)|traffic\\s*white)/i.test(t)
+          || /(^|[^a-z0-9])(?:wei(?:ß|ss))(?=$|[^a-z0-9])/i.test(t)) return 'Weiß (RAL 9016)';
+      if (/(ral\\s*8019|graubraun)/i.test(t)) return 'Graubraun (= RAL 8019)';
+      if (/(ral\\s*8017|schokoladenbraun|\\bbraun\\b|chocolate)/i.test(t)) return 'Braun (RAL 8017)';
+      if (/\\bgrau\\b/i.test(t)) return 'Grau';
+      if (/(ral\\s*1023|gelb|goldgelb|verkehrsgelb)/i.test(t)) return 'Gelb (RAL 1023)';
+      if (/(ral\\s*5010|dunkelblau|blau|kobalt)/i.test(t)) return 'Blau (RAL 5010)';
+      if (/(ral\\s*6005|moosgrün|grün|gruen|moosgruen)/i.test(t)) return 'Grün (RAL 6005)';
+      if (/(ral\\s*9007|graualuminium|alu|silber|aluminium|silber\\s*eloxiert|eloxiert|alu\\s*silber|aluminium\\s*silber)/i.test(t)) return 'Silber (= RAL 9006)';
+      return '';
+    }
+
+    function parsePanzerConfigsBrowser(text) {
+      const raw = String(text || '').replace(/\\r\\n/g, '\\n').trim();
+      if (!raw) return [];
+      function normalize(s) { return String(s || '').replace(/\\s+/g, ' ').trim(); }
+      function stripEndleisteClause(s) {
+        const t = String(s || '');
+        const withoutTagged =
+          t.replace(/(?:,|\\s)\\s*(?:farbe\\s*(?:endleiste|el)|(?:endleiste|el)\\s*farbe)\\s*:\\s*[^,\\n\\r]*/ig, '')
+           .replace(/(?:,|\\s)\\s*(?:el|endleiste)\\s*(?:gebohrt|geb\\.?|loch(?:ung)?|gelocht)\\s*:\\s*[^,\\n\\r]*/ig, '');
+        const withoutLoose = withoutTagged.replace(/(?:,|\\s)\\s*(?:endleiste|el)\\b[^,\\n\\r]*(?:,\\s*)?/ig, '');
+        return withoutLoose.trim();
+      }
+      function extractCommonAttrs(s) {
+        const t = normalize(stripEndleisteClause(s));
+        const countMatch = t.match(/^\\s*(\\d+)\\s*(?:x|×)\\s*/i);
+        const count = countMatch ? Math.max(1, Number(countMatch[1])) : 1;
+        const isAlu = /\\b(alu|aluminium)\\b/i.test(t);
+        const isPvc = /\\bpvc\\b/i.test(t);
+        const profileMatch =
+          t.match(/\\b(37|45|52)\\s*er\\b/i) ||
+          t.match(/\\b(37|45|52)\\s*mm\\b/i) ||
+          t.match(/\\b(37|45|52)\\b/i);
+        const profileHeight = profileMatch
+          ? Number(profileMatch[1])
+          : (/\\bmidi\\b/i.test(t) ? 45 : (/\\bmaxi\\b/i.test(t) ? 52 : (/\\bmini\\b/i.test(t) ? 37 : null)));
+        const color = detectShopifyColorBrowser(t);
+        return { count, material: isAlu && !isPvc ? 'Alu' : (isPvc && !isAlu ? 'PVC' : ''), profileHeight, color };
+      }
+      const baseAttrs = extractCommonAttrs(raw);
+      const baseCount = baseAttrs.count || 1;
+      const baseProfileHeight = baseAttrs.profileHeight || null;
+      const baseMaterial = baseAttrs.material || '';
+      const baseColor = baseAttrs.color || '';
+      const insertNewlines = (s) =>
+        String(s || '')
+          .replace(/(\\b\\d+\\)\\s*rollladenpanzer\\b)/ig, '\\n$1')
+          .replace(/(\\brollladenpanzer\\s*:)/ig, '\\n$1');
+      const blocksRaw = insertNewlines(raw).split(/\\n+/).map(x => String(x || '').trim()).filter(Boolean);
+      const segments = blocksRaw.length ? blocksRaw : [raw];
+      const configs = [];
+      for (const seg of segments) {
+        const attrs = extractCommonAttrs(seg);
+        const profileHeight = attrs.profileHeight || baseProfileHeight;
+        if (!profileHeight) continue;
+        const material = attrs.material || baseMaterial;
+        const color = attrs.color || baseColor || '';
+        const t = normalize(stripEndleisteClause(seg));
+        const re = /(\\d{3,4})\\s*(?:mm)?\\s*(?:x|×)\\s*(\\d{3,4})\\s*(?:mm)?/ig;
+        let m;
+        while ((m = re.exec(t)) != null) {
+          const widthMm = Number(m[1]);
+          const heightMm = Number(m[2]);
+          if (!Number.isFinite(widthMm) || !Number.isFinite(heightMm) || widthMm <= 0 || heightMm <= 0) continue;
+          configs.push({ count: baseCount, widthMm, heightMm, material, profileHeight, color });
+        }
+      }
+      const seen = new Map();
+      for (const cfg of configs) {
+        const cRaw = String(cfg.color || '').trim();
+        const ralMatch = cRaw.match(/RAL\\s*(\\d{4})/i);
+        const normColor = (ralMatch && ralMatch[1]) ? ('RAL' + ralMatch[1]) : cRaw;
+        const key = String(cfg.widthMm) + 'x' + String(cfg.heightMm) + '|'
+          + String(cfg.material || '') + '|' + String(cfg.profileHeight || '')
+          + '|' + normColor + '|' + String(cfg.count || 1);
+        if (!seen.has(key)) { seen.set(key, cfg); }
+        else {
+          const prev = seen.get(key);
+          if ((cfg.count || 1) > (prev.count || 1)) prev.count = cfg.count;
+        }
+      }
+      return Array.from(seen.values());
+    }
+
+    function ensurePanzerConfigs(item) {
+      if (!item || typeof item !== 'object') return item;
+      try {
+        const desc = String(item.description || item.title || '');
+        const parsed = parsePanzerConfigsBrowser(desc);
+        if (Array.isArray(parsed) && parsed.length) item.panzerConfigs = parsed;
+      } catch (e) {}
+      return item;
+    }
+
     function buildMaterialMap(items) {
       const map = new Map();
       items.forEach(it => {
@@ -1449,7 +1970,7 @@ router.get('/materials', (req, res) => {
       state.last = data;
       const root = document.getElementById('root');
       root.innerHTML = '';
-      const items = flattenItems(data);
+      const items = flattenItems(data).map(it => ensurePanzerConfigs(it));
       const map = buildMaterialMap(items);
       const q = normalizeOneLine(state.q).toLowerCase();
 
@@ -1783,7 +2304,12 @@ router.get('/materialstatus/:token', (req, res) => {
     }
 
     function fetchJson(url, options) {
-      return fetch(url, options).then(async (res) => {
+      const opts = Object.assign({ credentials: 'include' }, options || {});
+      return fetch(url, opts).then(async (res) => {
+        if (res.status === 401 && !window.__monitor_auth_reloaded) {
+          window.__monitor_auth_reloaded = true;
+          setTimeout(() => location.reload(), 400);
+        }
         const data = await res.json().catch(() => null);
         if (!res.ok || !data || data.ok === false) {
           throw new Error(data && data.error ? data.error : 'Anfrage fehlgeschlagen');
@@ -2668,7 +3194,12 @@ router.get('/materialbestand/:token', (req, res) => {
       return 'pill green';
     }
     function fetchJson(url, options) {
-      return fetch(url, options).then(async (res) => {
+      const opts = Object.assign({ credentials: 'include' }, options || {});
+      return fetch(url, opts).then(async (res) => {
+        if (res.status === 401 && !window.__monitor_auth_reloaded) {
+          window.__monitor_auth_reloaded = true;
+          setTimeout(() => location.reload(), 400);
+        }
         const data = await res.json().catch(() => null);
         if (!res.ok || !data || data.ok === false) {
           throw new Error(data && data.error ? data.error : 'Anfrage fehlgeschlagen');
@@ -2825,7 +3356,7 @@ router.get('/materialbestand/:token', (req, res) => {
       document.getElementById('addMinPacks').value = String(preset.minPacks || 0);
       document.getElementById('addNotes').value = preset.notes || '';
       const hay = String(preset.category || '') + ' ' + String(preset.label || '');
-      const m = /\b(motor|antrieb|wickler)\b/i.test(hay) ? 'units' : (/\bclip\b/i.test(hay) || Number(preset.packSize || 1) > 1 ? 'packs' : 'units');
+      const m = /\\b(motor|antrieb|wickler)\\b/i.test(hay) ? 'units' : (/\\bclip\\b/i.test(hay) || Number(preset.packSize || 1) > 1 ? 'packs' : 'units');
       document.getElementById('addPegMode').value = String(preset.pegMode || m);
       document.getElementById('addPegValue').value = String(preset.pegValue || 0);
     }
@@ -3390,6 +3921,32 @@ router.get('/label-tool', (req, res) => {
       return window.location.pathname + window.location.search + window.location.hash;
     }
 
+    const draftKey = 'label-tool:draft:v1';
+    const draftFieldIds = ['date', 'op', 'name', 'product', 'extra', 'withDate', 'datePrefixDelivery', 'withQr', 'bold', 'fs', 'ha', 'va', 'pkgTotal', 'search'];
+
+    function saveDraft() {
+      try {
+        const draft = {};
+        draftFieldIds.forEach(id => {
+          const field = document.getElementById(id);
+          draft[id] = field.type === 'checkbox' ? field.checked : field.value;
+        });
+        sessionStorage.setItem(draftKey, JSON.stringify(draft));
+      } catch (e) {}
+    }
+
+    function restoreDraft() {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem(draftKey));
+        if (!draft || typeof draft !== 'object') return;
+        draftFieldIds.forEach(id => {
+          const field = document.getElementById(id);
+          if (field.type === 'checkbox' && typeof draft[id] === 'boolean') field.checked = draft[id];
+          else if (field.type !== 'checkbox' && typeof draft[id] === 'string') field.value = draft[id];
+        });
+      } catch (e) {}
+    }
+
     function openFreeLabel(copies) {
       const withDate = !!(document.getElementById('withDate') && document.getElementById('withDate').checked);
       const datePrefixDelivery = !!(document.getElementById('datePrefixDelivery') && document.getElementById('datePrefixDelivery').checked);
@@ -3413,7 +3970,7 @@ router.get('/label-tool', (req, res) => {
       const qrText = withQr ? buildQr(dateIso, name, product) : '';
       const params = [];
       if (withQr && qrText) params.push('qr=' + encodeURIComponent(qrText));
-      params.push('l1=' + encodeURIComponent(product || 'Etikett'));
+      params.push('l1=' + encodeURIComponent(product));
       if (extra) params.push('l2=' + encodeURIComponent(extra));
       if (dateIso) params.push('d=' + encodeURIComponent(dateIso));
       if (dateIso && datePrefixDelivery) params.push('datePrefixDelivery=1');
@@ -3427,10 +3984,17 @@ router.get('/label-tool', (req, res) => {
       else params.push('copies=' + encodeURIComponent(String(copies || 1)));
       params.push('ret=' + encodeURIComponent(currentPageReturnTarget()));
       const url = '/display/label?' + params.join('&');
-      try { window.open(url, '_blank', 'noopener'); } catch (e) { window.location.href = url; }
+      saveDraft();
+      window.location.href = url;
     }
 
     document.getElementById('date').value = isoToday();
+    restoreDraft();
+    draftFieldIds.forEach(id => {
+      const field = document.getElementById(id);
+      field.addEventListener('input', saveDraft);
+      field.addEventListener('change', saveDraft);
+    });
     document.getElementById('print1').addEventListener('click', () => openFreeLabel(1));
     document.getElementById('print2').addEventListener('click', () => openFreeLabel(2));
 
@@ -3468,6 +4032,7 @@ router.get('/label-tool', (req, res) => {
           if (due) document.getElementById('date').value = due;
           if (title) document.getElementById('name').value = title;
           if (excerpt) document.getElementById('product').value = excerpt;
+          saveDraft();
         });
         resultsEl.appendChild(row);
       });
@@ -3739,6 +4304,120 @@ router.get('/', (req, res) => {
       return findFirstUrl(desc) || findFirstUrl(note) || findFirstUrl(title) || '';
     }
 
+    function flattenItems(data) {
+      const b = data && data.buckets ? data.buckets : null;
+      if (!b) return [];
+      return []
+        .concat(Array.isArray(b.today) ? b.today : [])
+        .concat(Array.isArray(b.tomorrow) ? b.tomorrow : [])
+        .concat(Array.isArray(b.later) ? b.later : []);
+    }
+
+    function detectShopifyColorBrowser(text) {
+      const t = String(text || '').toLowerCase();
+      if (/(ral\\s*7016|anthrazitgrau|anthrazit\\s+grau)/i.test(t)) return 'Anthrazitgrau (RAL 7016)';
+      if (/(ral\\s*9006|schwarz\\s*grau|schwarzgrau|\\banthrazit\\b)/i.test(t)) return 'Anthrazit (RAL 9006)';
+        if (/(ral\\s*9001|creme[-\\s]*wei(?:ß|ss))/i.test(t)) return 'Cremeweiß (= RAL 9001)';
+        if (/(ral\\s*9002|grau[-\\s]*wei(?:ß|ss))/i.test(t)) return 'Grauweiß (= RAL 9002)';
+        if (/(ral\\s*1013|perl[-\\s]*wei(?:ß|ss))/i.test(t)) return 'Perlweiß (= RAL 1013)';
+        if (/antik[-\\s]*wei(?:ß|ss)/i.test(t)) return 'Antikweiß';
+        if (/alt[-\\s]*wei(?:ß|ss)/i.test(t)) return 'Altweiß';
+        if (/rein[-\\s]*wei(?:ß|ss)/i.test(t)) return 'Reinweiß';
+        if (/(ral\\s*9016|verkehrswei(?:ß|ss)|traffic\\s*white)/i.test(t)
+          || /(^|[^a-z0-9])(?:wei(?:ß|ss))(?=$|[^a-z0-9])/i.test(t)) return 'Weiß (RAL 9016)';
+      if (/(ral\\s*8019|graubraun)/i.test(t)) return 'Graubraun (= RAL 8019)';
+      if (/(ral\\s*8017|schokoladenbraun|\\bbraun\\b|chocolate)/i.test(t)) return 'Braun (RAL 8017)';
+      if (/\\bgrau\\b/i.test(t)) return 'Grau';
+      if (/(ral\\s*1023|gelb|goldgelb|verkehrsgelb)/i.test(t)) return 'Gelb (RAL 1023)';
+      if (/(ral\\s*5010|dunkelblau|blau|kobalt)/i.test(t)) return 'Blau (RAL 5010)';
+      if (/(ral\\s*6005|moosgrün|grün|gruen|moosgruen)/i.test(t)) return 'Grün (RAL 6005)';
+      if (/(ral\\s*9007|graualuminium|alu|silber|aluminium|silber\\s*eloxiert|eloxiert|alu\\s*silber|aluminium\\s*silber)/i.test(t)) return 'Silber (= RAL 9006)';
+      return '';
+    }
+
+    function parsePanzerConfigsBrowser(text) {
+      const raw = String(text || '').replace(/\\r\\n/g, '\\n').trim();
+      if (!raw) return [];
+      function normalize(s) { return String(s || '').replace(/\\s+/g, ' ').trim(); }
+      function stripEndleisteClause(s) {
+        const t = String(s || '');
+        const withoutTagged =
+          t.replace(/(?:,|\\s)\\s*(?:farbe\\s*(?:endleiste|el)|(?:endleiste|el)\\s*farbe)\\s*:\\s*[^,\\n\\r]*/ig, '')
+           .replace(/(?:,|\\s)\\s*(?:el|endleiste)\\s*(?:gebohrt|geb\\.?|loch(?:ung)?|gelocht)\\s*:\\s*[^,\\n\\r]*/ig, '');
+        const withoutLoose = withoutTagged.replace(/(?:,|\\s)\\s*(?:endleiste|el)\\b[^,\\n\\r]*(?:,\\s*)?/ig, '');
+        return withoutLoose.trim();
+      }
+      function extractCommonAttrs(s) {
+        const t = normalize(stripEndleisteClause(s));
+        const countMatch = t.match(/^\\s*(\\d+)\\s*(?:x|×)\\s*/i);
+        const count = countMatch ? Math.max(1, Number(countMatch[1])) : 1;
+        const isAlu = /\\b(alu|aluminium)\\b/i.test(t);
+        const isPvc = /\\bpvc\\b/i.test(t);
+        const profileMatch =
+          t.match(/\\b(37|45|52)\\s*er\\b/i) ||
+          t.match(/\\b(37|45|52)\\s*mm\\b/i) ||
+          t.match(/\\b(37|45|52)\\b/i);
+        const profileHeight = profileMatch
+          ? Number(profileMatch[1])
+          : (/\\bmidi\\b/i.test(t) ? 45 : (/\\bmaxi\\b/i.test(t) ? 52 : (/\\bmini\\b/i.test(t) ? 37 : null)));
+        const color = detectShopifyColorBrowser(t);
+        return { count, material: isAlu && !isPvc ? 'Alu' : (isPvc && !isAlu ? 'PVC' : ''), profileHeight, color };
+      }
+      const baseAttrs = extractCommonAttrs(raw);
+      const baseCount = baseAttrs.count || 1;
+      const baseProfileHeight = baseAttrs.profileHeight || null;
+      const baseMaterial = baseAttrs.material || '';
+      const baseColor = baseAttrs.color || '';
+      const insertNewlines = (s) =>
+        String(s || '')
+          .replace(/(\\b\\d+\\)\\s*rollladenpanzer\\b)/ig, '\\n$1')
+          .replace(/(\\brollladenpanzer\\s*:)/ig, '\\n$1');
+      const blocksRaw = insertNewlines(raw).split(/\\n+/).map(x => String(x || '').trim()).filter(Boolean);
+      const segments = blocksRaw.length ? blocksRaw : [raw];
+      const configs = [];
+      for (const seg of segments) {
+        const attrs = extractCommonAttrs(seg);
+        const profileHeight = attrs.profileHeight || baseProfileHeight;
+        if (!profileHeight) continue;
+        const material = attrs.material || baseMaterial;
+        const color = attrs.color || baseColor || '';
+        const t = normalize(stripEndleisteClause(seg));
+        const re = /(\\d{3,4})\\s*(?:mm)?\\s*(?:x|×)\\s*(\\d{3,4})\\s*(?:mm)?/ig;
+        let m;
+        while ((m = re.exec(t)) != null) {
+          const widthMm = Number(m[1]);
+          const heightMm = Number(m[2]);
+          if (!Number.isFinite(widthMm) || !Number.isFinite(heightMm) || widthMm <= 0 || heightMm <= 0) continue;
+          configs.push({ count: baseCount, widthMm, heightMm, material, profileHeight, color });
+        }
+      }
+      const seen = new Map();
+      for (const cfg of configs) {
+        const cRaw = String(cfg.color || '').trim();
+        const ralMatch = cRaw.match(/RAL\\s*(\\d{4})/i);
+        const normColor = (ralMatch && ralMatch[1]) ? ('RAL' + ralMatch[1]) : cRaw;
+        const key = String(cfg.widthMm) + 'x' + String(cfg.heightMm) + '|'
+          + String(cfg.material || '') + '|' + String(cfg.profileHeight || '')
+          + '|' + normColor + '|' + String(cfg.count || 1);
+        if (!seen.has(key)) { seen.set(key, cfg); }
+        else {
+          const prev = seen.get(key);
+          if ((cfg.count || 1) > (prev.count || 1)) prev.count = cfg.count;
+        }
+      }
+      return Array.from(seen.values());
+    }
+
+    function ensurePanzerConfigs(item) {
+      if (!item || typeof item !== 'object') return item;
+      try {
+        const desc = String(item.description || item.title || '');
+        const parsed = parsePanzerConfigsBrowser(desc);
+        if (Array.isArray(parsed) && parsed.length) item.panzerConfigs = parsed;
+      } catch (e) {}
+      return item;
+    }
+
     function isWeekend(d) {
       const day = d.getDay();
       return day === 0 || day === 6;
@@ -3746,7 +4425,7 @@ router.get('/', (req, res) => {
 
     function workdaysUntilDateIso(dateIso) {
       const s = String(dateIso || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return null;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const due = new Date(s + 'T00:00:00');
@@ -3765,7 +4444,7 @@ router.get('/', (req, res) => {
     function operatorCode(input) {
       const t = normalizeOneLine(input)
         .replace(/[^0-9A-Za-zÄÖÜäöüß]+/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(/\\s+/g, ' ')
         .trim();
       if (!t) return '';
       const parts = t.split(' ').filter(Boolean);
@@ -3816,7 +4495,7 @@ router.get('/', (req, res) => {
       let out = joined;
       suppliers.forEach(v => {
         const vv = String(v);
-        out = out.replace(new RegExp('^' + vv.replace(/[.*+?^()|[\\]\\\\]/g, '\\$&') + '\\s+', 'i'), '');
+        out = out.replace(new RegExp('^' + vv.replace(/[.*+?^\$\{\}()|\\[\\]\\\\]/g, '\$&') + '\\\\s+', 'i'), '');
       });
       return normalizeOneLine(out);
     }
@@ -3833,7 +4512,7 @@ router.get('/', (req, res) => {
       if (!len) return { l1: s, l2: '' };
       const base = s
         .replace(mm ? mm[0] : (m ? m[0] : ''), ' ')
-        .replace(/[\s,;|]+/g, ' ')
+        .replace(/[\\s,;|]+/g, ' ')
         .trim();
       const cleanedBase = stripSupplierInfo(base || s);
       return { l1: cleanedBase || (base || s), l2: 'L ' + len };
@@ -3981,7 +4660,7 @@ router.get('/', (req, res) => {
         const subj = item.questionSubject ? String(item.questionSubject) : '';
         if (subj) return subj;
         const t = String(item.title || item.id || '');
-        return t.replace(/^OF\s*:\s*[^\s–-]+\s*(?:[–-]\s*)?/i, '').trim() || t;
+        return t.replace(/^OF\\s*:\\s*[^\\s–-]+\\s*(?:[–-]\\s*)?/i, '').trim() || t;
       }
       return item.title || item.id;
     }
@@ -4111,8 +4790,8 @@ router.get('/', (req, res) => {
         const s = String(text || '');
         const out = [];
         let cur = '';
-        const isDigit = (ch) => /\d/.test(String(ch || ''));
-        const isSpace = (ch) => /[\s\u00A0\u200B\u200C\u200D\uFEFF]/.test(String(ch || ''));
+        const isDigit = (ch) => /\\d/.test(String(ch || ''));
+        const isSpace = (ch) => /[\\s\\u00A0\\u200B\\u200C\\u200D\\uFEFF]/.test(String(ch || ''));
         const prevNonSpaceIndex = (idx) => {
           let j = idx - 1;
           while (j >= 0 && isSpace(s[j])) j -= 1;
@@ -4183,7 +4862,7 @@ router.get('/', (req, res) => {
     }
 
     function isProductionDetailLine(line) {
-      return /^(Schnittmaß SP-B 35|Stabilisierungsprofil \(Profilsäge\)|Schlitten auf |Bürste\b|Federstifte aktiv\b)/i.test(String(line || '').trim());
+      return /^(Fertigmaß:\\s*\\d|Schnittmaß SP-B 35|Stabilisierungsprofil \\(Profilsäge\\)|Schlitten auf |Haken in (Außennut|Mittelnut)$|Bürste\\b|Federstifte aktiv\\b)/i.test(String(line || '').trim());
     }
 
     function parsePositions(item) {
@@ -4302,9 +4981,9 @@ router.get('/', (req, res) => {
 
     function parseFertigmaßLine(detailsLines) {
       const lines = Array.isArray(detailsLines) ? detailsLines : [];
-      const line = lines.find(l => /^Fertigmaß:\s*\d/i.test(String(l || '').trim()));
+      const line = lines.find(l => /^Fertigmaß:\\s*\\d/i.test(String(l || '').trim()));
       if (!line) return null;
-      const raw = String(line).replace(/^Fertigmaß:\s*/i, '').trim();
+      const raw = String(line).replace(/^Fertigmaß:\\s*/i, '').trim();
       return parseMmPair(raw);
     }
 
@@ -4340,7 +5019,7 @@ router.get('/', (req, res) => {
     }
 
     function parseSpB35StabiLine(text) {
-      const m = /Stabilisierungsprofil \(Profilsäge\):\s*1\s*x\s*(\d{2,5})\s*mm,\s*Einklebepunkt\s*(\d{2,5})\s*mm\s*vom\s*Innenrand/i.exec(String(text || ''));
+      const m = /Stabilisierungsprofil \\(Profilsäge\\):\\s*1\\s*x\\s*(\\d{2,5})\\s*mm,\\s*Einklebepunkt\\s*(\\d{2,5})\\s*mm\\s*vom\\s*Innenrand/i.exec(String(text || ''));
       if (!m) return null;
       return {
         cutMm: Number(m[1]),
@@ -4349,6 +5028,7 @@ router.get('/', (req, res) => {
     }
 
     function buildSpB35StabiDisplay(stabiLine) {
+      if (String(stabiLine || '').includes('Rahmen-')) return stabiLine;
       const stabi = parseSpB35StabiLine(stabiLine);
       if (!stabi) return 'Sollwert: laut Stabilisierungsprofil-Zuschnitt einstellen';
       const formatMachineMm = (value) => Number.isFinite(value) ? (String(value).replace('.', ',') + ',0 mm') : '';
@@ -4363,9 +5043,9 @@ router.get('/', (req, res) => {
     function parseSpB35SlideLine(text) {
       const raw = String(text || '').trim();
       if (!raw) return null;
-      const base = /^Schlitten auf (.+?) jeweils (\d+)/i.exec(raw);
+      const base = /^Schlitten auf (.+?) jeweils (\\d+)/i.exec(raw);
       if (!base) return null;
-      const extra = /plus jeweils (\d+) Schlitten für jeweils (\d+) Grifflasche/i.exec(raw);
+      const extra = /plus jeweils (\\d+) Schlitten für jeweils (\\d+) Grifflasche/i.exec(raw);
       return {
         sideLabel: String(base[1] || '').trim(),
         slidesPerSide: Number(base[2]),
@@ -4397,10 +5077,16 @@ router.get('/', (req, res) => {
       return lines.join('\\n');
     }
 
+    function parseSpB35HookGrooveLine(text) {
+      const raw = String(text || '').trim();
+      const match = /^Haken in (Außennut|Mittelnut)$/i.exec(raw);
+      return match ? String(match[1]) : '';
+    }
+
     function parseSpB35BrushLine(text) {
       const raw = String(text || '').trim();
       if (!raw) return null;
-      const m = /^Bürste\s+(.+?)(?:,\s*(\d{1,2})\s*mm)?$/i.exec(raw);
+      const m = /^Bürste\\s+(.+?)(?:,\\s*(\\d{1,2})\\s*mm)?$/i.exec(raw);
       if (!m) return null;
       return {
         position: String(m[1] || '').trim(),
@@ -4425,8 +5111,8 @@ router.get('/', (req, res) => {
       if (iss) {
         const meta = parseIssHeaderMeta(iss.headerText);
         if (meta) {
-          const fertigLine = (Array.isArray(iss.details) ? iss.details : []).find(l => /^Fertigmaß:\s*\d/i.test(String(l || '').trim()));
-          const fertigDims = fertigLine ? String(fertigLine).replace(/^Fertigmaß:\s*/i, '').trim() : '';
+          const fertigLine = (Array.isArray(iss.details) ? iss.details : []).find(l => /^Fertigmaß:\\s*\\d/i.test(String(l || '').trim()));
+          const fertigDims = fertigLine ? String(fertigLine).replace(/^Fertigmaß:\\s*/i, '').trim() : '';
           return {
             l1: [meta.model, meta.subtype].filter(Boolean).join(' '),
             l2: fertigDims || meta.dims || '',
@@ -4444,11 +5130,11 @@ router.get('/', (req, res) => {
       const meta = parseIssHeaderMeta(block.headerText) || {};
       const color = meta.color || 'passender Farbe';
       const frameLine = block.details.find(l => /^Schnittmaß SP-B 35/i.test(l)) || '';
-      const stabiLine = block.details.find(l => /^Stabilisierungsprofil \\(Profilsäge\\)/i.test(l)) || '';
+      const stabiLines = block.details.filter(l => /^Stabilisierungsprofil \\(Profilsäge\\)/i.test(l));
       const slideLine = block.details.find(l => /^Schlitten auf /i.test(l)) || '';
+      const hookGrooveLine = block.details.find(l => /^Haken in (Außennut|Mittelnut)$/i.test(l)) || '';
       const brushLine = block.details.find(l => /^Bürste\\b/i.test(l)) || '';
       const frameSawDisplay = buildSpB35SawDisplay(meta, frameLine, block.details);
-      const stabiSawDisplay = buildSpB35StabiDisplay(stabiLine);
       const slideGuide = buildSpB35SlideGuide(meta, slideLine, block.details);
       const brushGuide = buildSpB35BrushGuide(brushLine);
       const steps = [];
@@ -4463,17 +5149,17 @@ router.get('/', (req, res) => {
           visual: 'Bildbereich: Gehrungssäge / Display mit OP, 1, 70, 44 / Profil auflegen / Anschlag prüfen',
         });
       }
-      if (stabiLine) {
+      stabiLines.forEach((stabiLine, index) => {
         steps.push({
-          title: 'Stabilisierungsprofil sägen',
+          title: 'Stabilisierungsprofil ' + (index + 1) + '/' + stabiLines.length + ' sägen',
           material: '1 Stabilisierungsprofil und 2 Verbinder bereitlegen. Das Profil auf die Profilsäge legen.',
           machine: 'Profilsäge',
-          machineSetup: stabiSawDisplay,
+          machineSetup: buildSpB35StabiDisplay(stabiLine),
           setting: stabiLine,
           result: 'Stabilisierungsprofil zugeschnitten. Der Einklebepunkt ist markiert und das Teil ist für den Einbau vorbereitet.',
-          visual: 'Bildbereich: Profilsäge / Stabiprofil / Maßband am Innenrand / Markierung Einklebepunkt',
+          visual: 'Bildbereich: Profilsäge / Stabiprofil / Maßband an der angegebenen Rahmenkante / Markierung Einklebepunkt',
         });
-      }
+      });
       if (slideLine) {
         steps.push({
           title: 'Schlitten und Griffleisten vorbereiten',
@@ -4484,6 +5170,19 @@ router.get('/', (req, res) => {
           setting: slideLine,
           result: 'Schlitten sitzen auf der richtigen Seite und die Position der Griffleiste ist festgelegt.',
           visual: 'Bildbereich: Schlitten / Griffleiste / Hakenseite / Position mittig oder 2/5 von unten',
+        });
+      }
+      const hookGroove = parseSpB35HookGrooveLine(hookGrooveLine);
+      if (hookGroove) {
+        steps.push({
+          title: 'Haken einsetzen',
+          material: 'Haken passend zum Hakenmaß bereitlegen.',
+          machine: 'Montageplatz',
+          machineSetupTitle: 'Montagehinweise',
+          machineSetup: 'Haken in die ' + hookGroove + ' des Profils einsetzen und Sitz prüfen.',
+          setting: hookGrooveLine,
+          result: 'Die Haken sitzen in der für die Rahmenlage vorgesehenen Nut.',
+          visual: 'Bildbereich: Profilquerschnitt / Haken in der ' + hookGroove,
         });
       }
       if (brushLine) {
@@ -4501,13 +5200,95 @@ router.get('/', (req, res) => {
       return steps;
     }
 
+    function normalizeFuzzyKey(s) {
+      return String(s == null ? '' : s)
+        .normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\\s+/g, ' ')
+        .replace(/[^\\p{L}\\p{N} ]/gu, ' ')
+        .replace(/\\b(der|die|das|und|oder|mit|ohne|fur|von|zum|zu|am|an|in|auf|aus|nach|vor)\\b/gi, ' ')
+        .replace(/\\s+/g, ' ').trim();
+    }
+    function tokenizeFuzzy(s) {
+      return normalizeFuzzyKey(s).split(' ').filter(function (t) { return t.length >= 3; });
+    }
+    function fuzzyMatchScore(a, b) {
+      const ta = tokenizeFuzzy(a);
+      const tb = tokenizeFuzzy(b);
+      if (!ta.length || !tb.length) return 0;
+      const setB = {};
+      for (let i = 0; i < tb.length; i += 1) setB[tb[i]] = true;
+      let hits = 0;
+      for (let j = 0; j < ta.length; j += 1) if (setB[ta[j]]) hits += 1;
+      return hits / Math.max(ta.length, tb.length);
+    }
     function getPartDoneInfo(item, partLabel) {
       const map = item && item.partStates && typeof item.partStates === 'object' ? item.partStates : null;
-      if (!map) return null;
-      const key = normalizeOneLine(partLabel).slice(0, 280);
-      if (!key) return null;
-      const st = map[key];
-      return st && st.done ? st.done : null;
+      if (map) {
+        const key = normalizeOneLine(partLabel).slice(0, 280);
+        if (key) {
+          const st = map[key];
+          if (st && st.done) return st.done;
+        }
+      }
+      const pd = item && item.partDone && typeof item.partDone === 'object' ? item.partDone : null;
+      const ov = item && item.orderOverview && Array.isArray(item.orderOverview) ? item.orderOverview : null;
+      if (pd && ov && ov.length) {
+        let bestIdx = -1;
+        let bestScore = 0;
+        for (let i = 0; i < ov.length; i += 1) {
+          const ovi = ov[i];
+          const ovt = ovi && typeof ovi === 'object' ? (ovi.label || ovi.text || ovi.title || String(ovi)) : String(ovi);
+          const s = fuzzyMatchScore(partLabel, ovt);
+          if (s > bestScore) { bestScore = s; bestIdx = i; }
+        }
+        if (bestIdx >= 0 && bestScore >= 0.35) {
+          const entry = pd[String(bestIdx)];
+          if (entry) return { ts: entry.ts, actor: entry.actor, label: entry.label || 'Fertig', keyOriginal: entry.keyOriginal };
+        }
+        const normPL = normalizeFuzzyKey(partLabel);
+        const keys = Object.keys(pd);
+        for (let k = 0; k < keys.length; k += 1) {
+          const ent = pd[keys[k]];
+          if (ent) {
+            const orig = normalizeFuzzyKey(ent.keyOriginal || ent.match || '');
+            if (orig && normPL && (orig === normPL || orig.indexOf(normPL) >= 0 || normPL.indexOf(orig) >= 0)) {
+              return { ts: ent.ts, actor: ent.actor, label: ent.label || 'Fertig', keyOriginal: ent.keyOriginal };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    function renderDescriptionWithDone(item) {
+      const desc = String(item && item.description || '').trim();
+      if (!desc) return el('div');
+      const blocks = parsePositionBlocks(item);
+      if (!blocks || !blocks.length) {
+        return el('div', null, [text(desc)]);
+      }
+      const wrap = el('div', { class: 'card-desc-positions' });
+      for (let i = 0; i < blocks.length; i += 1) {
+        const b = blocks[i];
+        const matchLabel = String(b.header || (b.idx + ') ' + (b.headerText || '')));
+        const done = getPartDoneInfo(item, matchLabel);
+        const doneCls = done ? ' done' : '';
+        const blockEl = el('div', { class: 'card-pos-block' });
+        const headerContent = done
+          ? matchLabel + '   \\u2713 ' + String(done.label || 'Fertig')
+          : matchLabel;
+        blockEl.appendChild(el('div', { class: 'card-pos card-pos-header' + doneCls }, [text(headerContent)]));
+        if (b.details && b.details.length) {
+          const dets = el('div', { class: 'card-pos-details' });
+          for (let j = 0; j < b.details.length; j += 1) {
+            dets.appendChild(el('div', { class: 'card-pos-detail' + doneCls }, [text(b.details[j])]));
+          }
+          blockEl.appendChild(dets);
+        }
+        wrap.appendChild(blockEl);
+      }
+      return wrap;
     }
 
     async function postJson(url, body, { timeoutMs = 12000 } = {}) {
@@ -4590,6 +5371,7 @@ router.get('/', (req, res) => {
           showToast('Notiz: ' + err);
         }
       });
+      ensurePanzerConfigs(item);
       const pcs = Array.isArray(item && item.panzerConfigs) ? item.panzerConfigs : [];
       const parts = parseParts(item);
       const positions = !pcs.length ? parsePositions(item) : [];
@@ -4654,12 +5436,16 @@ router.get('/', (req, res) => {
       })() : null;
 
       const hasOpenMat = item && Array.isArray(item.openMaterial) && item.openMaterial.length > 0;
+      const hasOrderedMat = item && Array.isArray(item.orderedMaterial) && item.orderedMaterial.length > 0;
       const hasMatNeeds = item && Array.isArray(item.materialNeeds) && item.materialNeeds.length > 0;
-      const isMatOrdered = String(item.status || '') === 'bestellt';
+      const isMatOrdered = String(item.status || '') === 'bestellt' || hasOrderedMat;
       const matViewed = isMatViewed(item && item.id);
       const isMatCheck = !item.emergency && !hasOpenMat && !isMatOrdered && hasMatNeeds && !matViewed;
       const missingBadgeLabel = hasOpenMat
         ? ('Material fehlt' + (item.openMaterial.length > 1 ? (' ' + String(item.openMaterial.length) + 'x') : ''))
+        : '';
+      const orderedBadgeLabel = hasOrderedMat
+        ? ('Material bestellt' + (item.orderedMaterial.length > 1 ? (' ' + String(item.orderedMaterial.length) + 'x') : ''))
         : '';
 
       const header = el('div', { class: 'card-header' }, [
@@ -4667,7 +5453,7 @@ router.get('/', (req, res) => {
         el('div', { class: 'card-badges' }, [
           item.emergency ? badge('NOTFALL', 'b-emergency') : el('span'),
           hasOpenMat ? badge(missingBadgeLabel, 'b-mat-missing') : el('span'),
-          isMatOrdered ? badge('Material bestellt', 'b-mat-ordered') : el('span'),
+          isMatOrdered ? badge(orderedBadgeLabel || 'Material bestellt', 'b-mat-ordered') : el('span'),
           isMatCheck ? badge('Material prüfen', 'b-mat-check') : el('span'),
           matViewed && !hasOpenMat && !isMatOrdered && hasMatNeeds ? badge('Material geprüft', 'b-mat-viewed') : el('span'),
           badge(item.origin || '-', item.origin === 'ReWo' ? 'b-rewo' : ''),
@@ -4693,7 +5479,7 @@ router.get('/', (req, res) => {
               el('div', { class: 'card-group-title' }, [text('Produkt')]),
               el('div', { class: 'card-group-text' }, [text(issBlock.headerText)]),
             ])
-            : el('div', null, [text(item.description || '')]),
+            : renderDescriptionWithDone(item),
           issBlock && issWorkPreview.length
             ? el('div', { class: 'card-group' }, [
               el('div', { class: 'card-group-title' }, [text('Arbeit')]),
@@ -4706,6 +5492,7 @@ router.get('/', (req, res) => {
           cut ? cut : el('span'),
           subtasks ? subtasks : el('span'),
           partsSummary ? el('div', { class: 'card-note' }, [text(partsSummary)]) : el('span'),
+          item.slackInfos ? el('div', { class: 'card-note', style: 'white-space: pre-wrap; overflow-wrap: anywhere;' }, [text('Notiz (Slack INFOS): ' + item.slackInfos)]) : el('span'),
           noteText ? el('div', { class: 'card-note' }, [text('Notiz: ' + noteText)]) : el('span')
         ]),
         el('img', { class: 'qr', src: qrUrl, alt: 'QR' })
@@ -5238,12 +6025,15 @@ router.get('/', (req, res) => {
       const metaLines = [];
       if (item && item.emergency) metaLines.push('NOTFALL: JA (Alarm wurde ausgelöst)');
       const matOpenCnt = item && Array.isArray(item.openMaterial) ? item.openMaterial.length : 0;
+      const matOrderedCnt = item && Array.isArray(item.orderedMaterial) ? item.orderedMaterial.length : 0;
       const matNeedsCnt = item && Array.isArray(item.materialNeeds) ? item.materialNeeds.length : 0;
       const stBestellt = item && String(item.status || '') === 'bestellt';
-      const istPruefen = item && !item.emergency && matOpenCnt === 0 && !stBestellt && matNeedsCnt > 0 && !isMatViewed(item && item.id);
-      const viewedNow = item && matNeedsCnt > 0 && !stBestellt && matOpenCnt === 0 && isMatViewed(item && item.id);
+      const hasOrderedMat = stBestellt || matOrderedCnt > 0;
+      const istPruefen = item && !item.emergency && matOpenCnt === 0 && !hasOrderedMat && matNeedsCnt > 0 && !isMatViewed(item && item.id);
+      const viewedNow = item && matNeedsCnt > 0 && !hasOrderedMat && matOpenCnt === 0 && isMatViewed(item && item.id);
       if (matOpenCnt > 0) metaLines.push('Material: FEHLT (' + String(matOpenCnt) + ' Position' + (matOpenCnt === 1 ? '' : 'en') + ' → ' + item.openMaterial.slice(0,3).join(', ') + (item.openMaterial.length > 3 ? ' ...' : '') + ')');
-      if (stBestellt) metaLines.push('Material: BESTELLT (Status wurde im Slack auf "Bestellt" gesetzt)');
+      if (matOrderedCnt > 0) metaLines.push('Material: BESTELLT (' + String(matOrderedCnt) + ' Position' + (matOrderedCnt === 1 ? '' : 'en') + ' → ' + item.orderedMaterial.slice(0,3).join(', ') + (item.orderedMaterial.length > 3 ? ' ...' : '') + ')');
+      else if (stBestellt) metaLines.push('Material: BESTELLT (Status wurde im Slack auf "Bestellt" gesetzt)');
       if (istPruefen) metaLines.push('Material: PRÜFEN (Mindestens ' + String(matNeedsCnt) + ' Material-Position offen → Kachel öffnen & Bestand prüfen)');
       if (viewedNow) metaLines.push('Material: GEPRÜFT ✓ (Du hast die Kachel bereits geöffnet – falls etwas fehlt, trägst Du es in die Slack-Materialliste ein)');
       metaLines.push('ID: ' + item.id);
@@ -5290,14 +6080,18 @@ router.get('/', (req, res) => {
       if (posBlocks.length) {
         const hasMultiple = posBlocks.length > 1;
         posBlocks.forEach((pb, pbi) => {
+          const matchLabel = pb.header;
+          const done = getPartDoneInfo(item, matchLabel);
+          const headerShown = done ? (matchLabel + '   \\u2713 ' + String(done.label || 'Fertig')) : matchLabel;
+          const preCls = 'details-pre' + (done ? ' done' : '');
           body.appendChild(el('div', { class: 'details-section' }, [
             el('div', { class: 'details-section-title' }, [text(hasMultiple ? ('Position ' + pb.idx + ') Produkt') : 'Produkt')]),
-            el('pre', { class: 'details-pre' }, [text(pb.header)]),
+            el('pre', { class: preCls }, [text(headerShown)]),
           ]));
           if (pb.details && pb.details.length) {
             body.appendChild(el('div', { class: 'details-section' }, [
               el('div', { class: 'details-section-title' }, [text(hasMultiple ? ('Position ' + pb.idx + ') Arbeitsanweisung') : 'Arbeitsanweisung')]),
-              el('pre', { class: 'details-pre' }, [text(pb.details.join('\\n\\n'))]),
+              el('pre', { class: preCls }, [text(pb.details.join('\\n\\n'))]),
             ]));
           }
           if (hasMultiple && pbi < posBlocks.length - 1) {
@@ -5305,6 +6099,10 @@ router.get('/', (req, res) => {
           }
         });
       } else if (item.description) body.appendChild(el('pre', { class: 'details-pre' }, [text(item.description)]));
+      if (item.slackInfos) body.appendChild(el('div', { class: 'details-section' }, [
+        el('div', { class: 'details-section-title' }, [text('Notiz (Slack INFOS)')]),
+        el('pre', { class: 'details-pre' }, [text(item.slackInfos)]),
+      ]));
       if (item.cutInfo) body.appendChild(el('pre', { class: 'details-pre' }, [text(item.cutInfo)]));
 
       const openMat = Array.isArray(item.openMaterial) ? item.openMaterial : [];
@@ -5770,6 +6568,7 @@ router.get('/', (req, res) => {
         el('div', { class: 'modal-card details-card' }, [
           el('div', { class: 'details-header' }, [
             el('div', { class: 'modal-title', id: 'detailsTitle' }, [text('')]),
+            el('input', { id: 'detailsAdminKey', placeholder: 'Admin-Key…', type: 'password', autocomplete: 'off' }),
             el('button', { id: 'detailsLabel', class: 'btn', type: 'button' }, [text('Etikett')]),
               el('button', { id: 'detailsLabelPackages', class: 'btn', type: 'button' }, [text('Etikett (Pakete)')]),
             el('button', { id: 'detailsLabelSingle', class: 'btn', type: 'button' }, [text('Etikett (1x)')]),
@@ -5780,6 +6579,7 @@ router.get('/', (req, res) => {
             el('button', { id: 'detailsLink', class: 'btn', type: 'button' }, [text('Link')]),
             el('button', { id: 'detailsAnswer', class: 'btn', type: 'button' }, [text('Antwort')]),
             el('button', { id: 'detailsEdit', class: 'btn', type: 'button' }, [text('Bearbeiten')]),
+            el('button', { id: 'detailsRecalcSave', class: 'btn', type: 'button', title: 'SP-B 35 Arbeitsanweisung neu berechnen und direkt in Slack speichern (Positionen + Infos Spalten)' }, [text('SP-B 35 speichern')]),
             el('button', { id: 'detailsUnmarkMatViewed', class: 'btn', type: 'button', title: 'OOPSIE: Markierung "Material geprüft" nur für DIESEN Auftrag zurücksetzen → Kachel wird wieder grün' }, [text('OOPSIE – ungeprüft')]),
             el('button', { id: 'detailsResetMatViewed', class: 'btn', type: 'button', title: '"Material geprüft" Markierungen serverweit für ALLE Aufträge löschen' }, [text('Alle Mat. Prüf. zurück.')]),
             el('button', { id: 'detailsClose', class: 'btn', type: 'button' }, [text('Schließen')])
@@ -5792,7 +6592,7 @@ router.get('/', (req, res) => {
           el('div', { class: 'modal-title', id: 'editTitle' }, [text('Bearbeiten')]),
           el('div', { class: 'modal-actions' }, [
             el('button', { id: 'editNo', class: 'btn' }, [text('Abbrechen')]),
-            el('button', { id: 'editRecalc', class: 'btn', type: 'button' }, [text('Stäbe neu berechnen')]),
+            el('button', { id: 'editRecalc', class: 'btn', type: 'button' }, [text('Arbeitsanweisung neu berechnen')]),
             el('button', { id: 'editYes', class: 'btn primary' }, [text('Speichern')])
           ]),
           el('div', { class: 'modal-title', id: 'editSub1' }, [text('Titel')]),
@@ -5835,6 +6635,7 @@ router.get('/', (req, res) => {
       const stationInput = document.getElementById('station');
       const actorInput = document.getElementById('actor');
       const adminKeyInput = document.getElementById('adminKey');
+      const detailsAdminKeyInput = document.getElementById('detailsAdminKey');
       const onlySawBtn = document.getElementById('onlySaw');
       const autoPrintBtn = document.getElementById('autoPrintToggle');
       const doneTodayBtn = document.getElementById('doneTodayOpen');
@@ -5914,7 +6715,16 @@ router.get('/', (req, res) => {
       adminKeyInput.addEventListener('input', () => {
         state.adminKey = String(adminKeyInput.value || '').trim();
         try { localStorage.setItem('adminKey', state.adminKey); } catch (e) {}
+        if (detailsAdminKeyInput) detailsAdminKeyInput.value = state.adminKey;
       });
+      if (detailsAdminKeyInput) {
+        detailsAdminKeyInput.value = state.adminKey || '';
+        detailsAdminKeyInput.addEventListener('input', () => {
+          state.adminKey = String(detailsAdminKeyInput.value || '').trim();
+          adminKeyInput.value = state.adminKey;
+          try { localStorage.setItem('adminKey', state.adminKey); } catch (e) {}
+        });
+      }
 
       if (prevId === 'search') {
         try {
@@ -6154,10 +6964,10 @@ router.get('/', (req, res) => {
         const elLine = (elc || eld) ? ('EL ' + [elc, eld].filter(Boolean).join(' ')) : '';
         const dateIso = withDate ? String(item.montageDate || item.dueDate || '').slice(0, 10) : '';
         const customer = item.title || item.id;
-        const custParts = String(customer || '').split(/\s+[–-]\s+/).map(s => String(s || '').trim()).filter(Boolean);
+        const custParts = String(customer || '').split(/\\s+[–-]\\s+/).map(s => String(s || '').trim()).filter(Boolean);
         const top = [custParts[0] || '', custParts[1] || ''].filter(Boolean).join(' – ');
         const rest = custParts.slice(2);
-        const street = rest.find(t => /\d/.test(t)) || '';
+        const street = rest.find(t => /\\d/.test(t)) || '';
         const person = rest.find(t => t && t !== street) || '';
         const cust1 = top || String(customer || '');
         const cust2 = street ? street : person;
@@ -6247,8 +7057,8 @@ router.get('/', (req, res) => {
       const meta = parseIssHeaderMeta(block.headerText) || {};
       const steps = buildIssWorkSteps(item);
       const esc = (s) => String(s || '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-      const fertigLine = (Array.isArray(block.details) ? block.details : []).find(l => /^Fertigmaß:\s*\d/i.test(String(l || '').trim()));
-      const fertigDims = fertigLine ? String(fertigLine).replace(/^Fertigmaß:\s*/i, '').trim() : '';
+      const fertigLine = (Array.isArray(block.details) ? block.details : []).find(l => /^Fertigmaß:\\s*\\d/i.test(String(l || '').trim()));
+      const fertigDims = fertigLine ? String(fertigLine).replace(/^Fertigmaß:\\s*/i, '').trim() : '';
       const metaParts = [fertigDims || meta.dims, meta.color, meta.mesh].filter(Boolean);
       const sawDisplayPhotoUrl = '/display/iss-assets/' + encodeURIComponent('GehrungsDisplay.jpg');
       const parseSetupMap = (text) => {
@@ -6412,7 +7222,7 @@ router.get('/', (req, res) => {
         const descLc = String(item && item.description || '').toLowerCase();
         if (descLc.includes('welle')) return 1;
         const ps = item && typeof item.panzerSummary === 'string' ? item.panzerSummary.trim() : '';
-        if (ps && (ps.toLowerCase().includes('panzer') || /\d{3,4}\s*(?:x|×)\s*\d{3,4}/i.test(ps))) return 2;
+        if (ps && (ps.toLowerCase().includes('panzer') || /\\d{3,4}\\s*(?:x|×)\\s*\\d{3,4}/i.test(ps))) return 2;
         return 1;
       }
       document.getElementById('detailsLabel').onclick = (e) => { if (e) e.stopPropagation(); openLabelForItem(state.detailsItem, defaultLabelCopies(state.detailsItem)); };
@@ -6457,6 +7267,39 @@ router.get('/', (req, res) => {
         if (!state.detailsItem) return;
         openEdit(state.detailsItem);
       };
+      document.getElementById('detailsRecalcSave').onclick = async () => {
+        const item = state.detailsItem;
+        if (!item || !item.id) return;
+        const checkHay = String((item && item.title) || '') + '\\n' + String((item && item.description) || '');
+        if (!/sp-b\\s*35/i.test(checkHay)) {
+          showToast('Kein SP-B 35 Auftrag erkannt');
+          return;
+        }
+        const ok = window.confirm('SP-B 35 Arbeitsanweisung NEU berechnen und in Slack (Positionen + Infos) speichern?\\n\\nDadurch werden die gespeicherten Texte im Slack-Auftrag überschrieben.');
+        if (!ok) return;
+        showToast('Berechne und speichere…');
+        const url = '/api/production/item/' + encodeURIComponent(item.id) + '/recalc-save';
+        const out = await postJsonWithRetry(url, { actor: state.actor || '', station: state.station || '' }, { retries: 0 });
+        if (out.ok && out.data && out.data.ok) {
+          const cols = Array.isArray(out.data.cellsUpdated) ? out.data.cellsUpdated.join(', ') : '';
+          showToast('Gespeichert' + (cols ? ' (' + cols + ')' : '') + ' – lade neu…');
+          setTimeout(() => {
+            load();
+          }, 600);
+        } else {
+          if (out.status === 401) {
+            state.adminKey = '';
+            try { localStorage.removeItem('adminKey'); } catch (e) {}
+            showToast('Admin-Key falsch');
+            try { document.getElementById('adminKey').value = ''; document.getElementById('adminKey').focus(); } catch (e) {}
+          } else if (out.status === 501) {
+            showToast('Admin-Key am Server fehlt');
+          } else {
+            const err = out && out.data && out.data.error ? String(out.data.error) : 'fehlgeschlagen';
+            showToast('Speichern: ' + err);
+          }
+        }
+      };
       document.getElementById('editNo').onclick = () => {
         closeEdit();
       };
@@ -6473,8 +7316,32 @@ router.get('/', (req, res) => {
         const out = await postJsonWithRetry('/api/production/recalc', { description }, { retries: 0 });
         if (out.ok && out.data && out.data.ok) {
           const ci = out.data.cutInfo ? String(out.data.cutInfo) : '';
-          if (preview) preview.textContent = ci || '(keine Panzer erkannt)';
-          showToast('Berechnet');
+          const hasSpb35 = Array.isArray(out.data.spb35Blocks) && out.data.spb35Blocks.length;
+          if (out.data.rebuiltDescription && descInput) {
+            descInput.value = String(out.data.rebuiltDescription);
+          }
+          if (preview) {
+            const lines = [];
+            if (ci) {
+              lines.push('=== Rollladenpanzer ===');
+              lines.push(ci);
+            }
+            if (hasSpb35) {
+              if (lines.length) lines.push('');
+              lines.push('=== SP-B 35 (neu berechnet) ===');
+              for (const blk of out.data.spb35Blocks) {
+                if (!blk || !blk.spb35) continue;
+                lines.push(blk.header);
+                const infoLines = Array.isArray(blk.infoDetails) && blk.infoDetails.length ? blk.infoDetails
+                  : (Array.isArray(blk.details) && blk.details.length ? blk.details
+                  : (blk.spb35.productionLines || []));
+                if (infoLines.length) lines.push(...infoLines);
+                lines.push('');
+              }
+            }
+            preview.textContent = lines.length ? lines.join('\\n') : (ci ? ci : '(keine Panzer- oder SP-B-35-Elemente erkannt)');
+          }
+          showToast('Berechnet' + (out.data.rebuiltDescription ? ' – Text im Editor ersetzt' : ''));
         } else {
           const err = out && out.data && out.data.error ? String(out.data.error) : 'fehlgeschlagen';
           showToast('Berechnung: ' + err);
@@ -6509,6 +7376,7 @@ router.get('/', (req, res) => {
                 updated.vorsatz = rec.data.vorsatz || null;
                 updated.vorsatzElement = rec.data.vorsatzElement || null;
                 updated.vorsatzBoxOnly = rec.data.vorsatzBoxOnly || null;
+                if (rec.data.spb35Blocks && (!updated.spb35Blocks || rec.data.spb35Blocks.length)) updated.spb35Blocks = rec.data.spb35Blocks;
               }
               render(data);
               openDetails(updated);
@@ -6643,8 +7511,10 @@ router.get('/', (req, res) => {
         .done-today-event-head { font-size: 12px; opacity: .82; }
         .done-today-part { font-size: 13px; margin-top: 4px; }
         .done-today-empty { border: 1px dashed rgba(255,255,255,.18); border-radius: 12px; padding: 18px; color: rgba(255,255,255,.82); }
-        .details-card { width: min(980px, 98vw); padding: 0; border-color: rgba(65,196,255,.65); }
-        .details-header { display:flex; justify-content:space-between; align-items:center; gap: 10px; padding: 14px; border-bottom: 1px solid rgba(255,255,255,.12); }
+        .details-card { width: min(1180px, 98vw); padding: 0; border-color: rgba(65,196,255,.65); }
+        .details-header { display:flex; justify-content:flex-start; align-items:flex-start; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.12); flex-wrap: wrap; align-content: flex-start; }
+        .details-header .modal-title { flex: 1 1 220px; min-width: 220px; margin: 4px 0; padding-right: 8px; }
+        .details-header .btn { flex: 0 0 auto; }
         .details-body { padding: 14px; max-height: 70vh; overflow:auto; }
         .details-pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; opacity: .95; background: #11131a; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px; margin: 0 0 12px 0; }
         .details-section-title { font-weight: 700; margin: 6px 0 10px; }
@@ -6652,6 +7522,7 @@ router.get('/', (req, res) => {
         .details-row { display:flex; justify-content:space-between; gap: 10px; align-items:center; padding: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #0f1118; }
         .details-row-text { font-size: 13px; opacity: .95; }
         .details-row.done .details-row-text { text-decoration: line-through; text-decoration-thickness: 2px; opacity: .6; }
+        .details-pre.done { text-decoration: line-through; text-decoration-thickness: 2px; opacity: .6; }
         .details-row-actions { display:flex; gap: 8px; }
         .card-subtasks { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,.14); display: grid; gap: 4px; }
         .card-subtasks-title { font-size: 12px; font-weight: 700; opacity: .95; }
@@ -6660,6 +7531,13 @@ router.get('/', (req, res) => {
         .card-group { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,.14); }
         .card-group-title { font-size: 12px; font-weight: 700; opacity: .88; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
         .card-group-text { font-size: 13px; opacity: .95; white-space: pre-wrap; }
+        .card-desc-positions { display: grid; gap: 3px; }
+        .card-pos { font-size: 13px; opacity: .95; white-space: pre-wrap; line-height: 1.4; }
+        .card-pos.done { text-decoration: line-through; text-decoration-thickness: 2px; opacity: .55; }
+        .card-pos-header { }
+        .card-pos-details { padding-left: 14px; display: grid; gap: 2px; }
+        .card-pos-detail { font-size: 12px; opacity: .85; }
+        .card-pos-detail.done { text-decoration: line-through; text-decoration-thickness: 2px; opacity: .5; }
         .grid { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:14px; padding:14px; flex:1; overflow:hidden; }
         .col { background:#0f1118; border:1px solid rgba(255,255,255,.12); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; min-height: 0; }
         .col-title { padding:12px 14px; font-weight:700; border-bottom:1px solid rgba(255,255,255,.12); display:flex; justify-content:space-between; align-items:center; gap:10px; }
@@ -6916,8 +7794,52 @@ router.get('/', (req, res) => {
     }
 
     function load({ forceMaterials } = {}) {
+      const bootMsg = document.getElementById('bootMsg');
+      const bootErr = document.getElementById('bootErr');
+      if (bootMsg) bootMsg.textContent = 'Lade Daten (Auth-Cookie wird geprüft)...';
+      if (bootErr) bootErr.textContent = '';
+
       const url = forceMaterials ? '/api/production/board?forceMaterials=1' : '/api/production/board';
-      const pBoard = fetch(url).then(r => r.ok ? r.json() : null).catch(() => null);
+      const startedAt = Date.now();
+
+      if (!window.__monitor_loadTimer) {
+        window.__monitor_loadTimer = setTimeout(() => {
+          if (!state.last && !window.__monitor_auth_reloaded) {
+            if (bootMsg) bootMsg.textContent = 'Zeitüberschreitung! Seite wird neu geladen...';
+            window.__monitor_auth_reloaded = true;
+            setTimeout(() => location.reload(), 500);
+          }
+        }, 8000);
+      }
+
+      const pBoard = fetch(url, { credentials: 'include' }).then(async (r) => {
+        if (r.status === 401 && !window.__monitor_auth_reloaded) {
+          if (bootErr) bootErr.textContent = 'Keine gültige Anmeldung! (401)';
+          if (bootMsg) bootMsg.textContent = 'Authentifizierung erforderlich. Seite wird neu geladen...';
+          window.__monitor_auth_reloaded = true;
+          setTimeout(() => location.reload(), 500);
+          return null;
+        }
+        if (!r.ok) {
+          if (bootErr) bootErr.textContent = 'Server-Fehler: HTTP ' + r.status;
+          return null;
+        }
+        try {
+          const d = await r.json();
+          if (bootMsg) {
+            const ms = Math.max(0, Date.now() - startedAt);
+            bootMsg.textContent = 'Daten geladen in ' + ms + 'ms. Rendering...';
+          }
+          return d;
+        } catch (e) {
+          if (bootErr) bootErr.textContent = 'Ungültige Daten vom Server!';
+          return null;
+        }
+      }).catch((err) => {
+        if (bootErr) bootErr.textContent = 'Netzwerk-Fehler: ' + (err && err.message ? err.message : err);
+        return null;
+      });
+
       const pMat = loadMatCheckedIds().then(() => true).catch(() => false);
       Promise.allSettled([pBoard, pMat]).then((results) => {
         const d = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -6937,6 +7859,8 @@ router.get('/', (req, res) => {
           hasOpenModal();
         if (state.last && !busy) {
           render(state.last);
+        } else if (!state.last) {
+          if (bootErr && !bootErr.textContent) bootErr.textContent = 'Keine Daten erhalten!';
         }
       }).catch(() => {
         if (state.last && !hasOpenModal()) render(state.last);
@@ -7339,6 +8263,200 @@ router.get('/materialcheck/:token', (req, res) => {
   res.setHeader('Expires', '0');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
+});
+
+const prod = require('./production');
+
+function escapeHtml(s) {
+  const str = String(s == null ? '' : s);
+  let out = '';
+  for (let i = 0; i < str.length; i += 1) {
+    const c = str.charCodeAt(i);
+    if (c === 38) out += '&amp;';
+    else if (c === 60) out += '&lt;';
+    else if (c === 62) out += '&gt;';
+    else if (c === 34) out += '&quot;';
+    else if (c === 39) out += '&#39;';
+    else out += str[i];
+  }
+  return out;
+}
+
+router.get('/kommissionierung/api/board', monitorHttpAuthMiddleware, async (req, res, next) => {
+  try {
+    const force = String(req.query.forceMaterials || '') === '1' || String(req.query.force || '') === '1';
+    const snap = await prod.buildFullBoardSnapshot({ forceMaterials: force });
+    const alle = Array.isArray(snap.items) ? snap.items : [];
+    const now = new Date();
+    const defaultDatum = prod.nextWorkday(now, 1);
+    const requestedRaw = String(req.query.date || '').slice(0, 10);
+    const requested = requestedRaw && /^\d{4}-\d{2}-\d{2}$/.test(requestedRaw) ? prod.parseIsoDate(requestedRaw) : null;
+    const targetDate = requested || defaultDatum;
+    const targetIso = prod.formatDateIso(targetDate);
+    const dtLabel = targetDate.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const filtered = alle.filter(it => {
+      const m = prod.parseIsoDate(it.montageDate);
+      const d = prod.parseIsoDate(it.dueDate);
+      const eff = m || d;
+      return eff ? prod.sameDay(eff, targetDate) : false;
+    });
+    filtered.sort((a, b) => {
+      const ma = prod.parseIsoDate(a.montageDate);
+      const mb = prod.parseIsoDate(b.montageDate);
+      const ta = ma ? ma.getTime() : Number.POSITIVE_INFINITY;
+      const tb = mb ? mb.getTime() : Number.POSITIVE_INFINITY;
+      if (ta !== tb) return ta - tb;
+      return String(a.title || '').localeCompare(String(b.title || ''));
+    });
+    const zeilen = [];
+    for (const it of filtered) {
+      const rows = prod.erzeugeKommissionierZeilen(it);
+      for (const r of rows) zeilen.push(r);
+    }
+    const aufträge = [];
+    const seen = new Set();
+    for (const r of zeilen) {
+      if (seen.has(r.auftragId)) continue;
+      seen.add(r.auftragId);
+      aufträge.push({
+        id: r.auftragId,
+        titel: r.auftragTitel,
+        adresse: r.adresse,
+        kurzAdresse: r.kurzAdresse,
+        montageIso: r.montageDatumIso,
+        anzahlZeilen: zeilen.filter(z => z.auftragId === r.auftragId).length,
+      });
+    }
+    const kategorieCount = {};
+    for (const r of zeilen) {
+      kategorieCount[r.typ] = (kategorieCount[r.typ] || 0) + 1;
+    }
+    const gesamtOffeneMaterialien = new Set();
+    for (const r of zeilen) {
+      for (const m of (r.materialOffen || [])) gesamtOffeneMaterialien.add(prod.normalizeMaterialKey(m) || m);
+    }
+    res.json({
+      ok: true,
+      datumIso: targetIso,
+      datumLabel: dtLabel,
+      istFeiertag: prod.isHoliday(targetDate),
+      istWochenende: prod.isWeekend(targetDate),
+      defaultDatumIso: prod.formatDateIso(defaultDatum),
+      aufgaben: zeilen,
+      statistik: {
+        gesamtZeilen: zeilen.length,
+        aufträge,
+        nachKategorie: kategorieCount,
+        gesamtOffeneMaterialien: Array.from(gesamtOffeneMaterialien),
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/kommissionierung', monitorHttpAuthMiddleware, (req, res) => {
+  const css = '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+'<title>Kommissionierung · Produktion Monitor</title>' +
+'<style>' +
+  'html,body{margin:0;padding:0;background:#0b1020;color:#e6eefc;font-family:Inter,system-ui,Arial,sans-serif;font-size:14px;}' +
+  '#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:space-around;background:#0b1020;color:#8fa3c9;font-size:15px;font-weight:700}' +
+  '#root{padding:18px 16px 200px;max-width:1200px;margin:0 auto}' +
+  '.top{position:sticky;top:0;z-index:20;background:0;background:linear-gradient(180deg,#070026,#0b0c1d 60%,rgba(7,12,36,.2));padding:14px 16px 16px;border-bottom:1px solid rgba(148,163,184,.18);margin:-18px -16px 16px;backdrop-filter:blur(8px)}' +
+  '.top h1{margin:0 0 10px;font-size:20px;color:#e6eefc;display:flex;align-items:center;gap:10px}' +
+  '.top h1 span.brand{color:#7dd3fc;font-weight:900}' +
+  '.toolbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}' +
+  '.toolbar label{color:#cbd5e1;font-size:12px;display:flex;gap:6px;align-items:center}' +
+  '.toolbar .sep{width:1px;height:22px;background:rgba(148,163,184,.24);margin:0 4px}' +
+  'input[type="date"],select,button,.btn,input[type="text"]{background:#0a0f26;border:1px solid rgba(148,163,184,.28);color:#e6eefc;border-radius:8px;padding:6px 9px;font-size:13px;outline:none}' +
+  'input[type="date"]:focus,select:focus{border-color:#38bdf8}' +
+  '.btn{cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}' +
+  '.btn.primary{background:linear-gradient(180deg,#0284c7,#0ea5e9);border-color:#7dd3fc;color:#041a2d;font-weight:800}' +
+  '.btn.ok{background:linear-gradient(180deg,#10b981,#059669);border-color:#6ee7b7;color:#022c1e;font-weight:700}' +
+  '.btn.soft{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.35);color:#e6eefc}' +
+  '.btn.danger{background:rgba(127,29,29,.35);border-color:rgba(248,113,113,.5);color:#fecaca;font-weight:700}' +
+  '.btn:hover{filter:brightness(1.05)}' +
+  '.progress-wrap{display:flex;align-items:center;gap:10px;margin-left:auto;padding:4px 0;color:#cbd5e1;font-size:12px}' +
+  '.progress{width:160px;height:9px;background:rgba(148,163,184,.2);border-radius:999px;overflow:hidden;position:relative}' +
+  '.progress > span{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#0ea5e9 0%,#10b981 100%);transition:width .25s}' +
+  '.warn{padding:2px 8px;border-radius:6px;background:rgba(127,29,29,.5);border:1px solid rgba(248,113,113,.4);color:#fecaca;font-weight:800;font-size:11px;letter-spacing:.04em}' +
+  '.okpi{padding:2px 8px;border-radius:6px;background:rgba(16,185,129,.18);border:1px solid rgba(52,211,153,.35);color:#6ee7b7;font-weight:800;font-size:11px;letter-spacing:.04em}' +
+  '.group{margin:18px 0;background:rgba(15,23,42,.65);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:14px 14px 10px;box-shadow:0 10px 30px rgba(2,6,23,.4)}' +
+  '.group h2{margin:0;font-size:15px;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;align-items:center}' +
+  '.group h2 .grp-sub{color:#8fa3c9;font-size:12px;font-weight:500}' +
+  '.grp-meta{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 0}' +
+  '.group h2{margin-bottom:2px}' +
+  '.pil{padding:3px 9px;border-radius:999px;font-size:11px;border:1px solid rgba(148,163,184,.22);color:#cbd5e1;background:rgba(148,163,184,.08)}' +
+  '.pil.red{background:rgba(239,68,68,.18);color:#fecaca;border-color:rgba(248,113,113,.45)}' +
+  '.pil.blue{background:rgba(14,165,233,.2);color:#bae6fd;border-color:rgba(125,211,252,.5)}' +
+  '.pil.green{background:rgba(16,185,129,.18);color:#bbf7d0;border-color:rgba(52,211,153,.5)}' +
+  '.rows{margin:8px 0 0;display:flex;flex-direction:column;gap:6px}' +
+  '.row{display:grid;grid-template-columns:34px 1fr auto;gap:8px 14px;padding:10px 10px 10px 6px;border-radius:10px;align-items:flex-start;transition:background .15s;border:1px solid transparent}' +
+  '.row:hover{background:rgba(148,163,184,.08);border-color:rgba(148,163,184,.14)}' +
+  '.row.checked{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.22);opacity:.88}' +
+  '.row.checked .row-main{text-decoration:line-through;color:#94a3b8}' +
+  '.row.fertig{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.22);opacity:.92}' +
+  '.row.fertig .row-main{text-decoration:line-through dotted;text-decoration-thickness:1.5px;color:#cbd5e1}' +
+  '.row input[type="checkbox"]{width:20px;height:20px;margin-top:2px 0 0;accent-color:#10b981}' +
+  '.row-main{display:flex;flex-direction:column;gap:4px}' +
+  '.row-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}' +
+  '.anz{font-weight:800;color:#f97316;background:rgba(249,115,22,.18);padding:2px 8px;border-radius:6px;border:1px solid rgba(249,115,22,.45);font-size:12px}' +
+  '.bez{font-weight:700;color:#e6eefc}' +
+  '.cat{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,.22);border:1px solid rgba(96,165,250,.35);color:#bfdbfe}' +
+  '.row-right{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}' +
+  '.details{color:#94a3b8;font-size:12px}' +
+  '.details code{background:rgba(0,0,0,.35);padding:1px 6px;border-radius:4px;color:#cbd5e1;font-family:Consolas,Menlo,monospace;font-size:11px;border:1px solid rgba(148,163,184,.2);margin-right:4px}' +
+  '.foot{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px;background:rgba(7,12,36,.92);border-top:1px solid rgba(148,163,184,.2);backdrop-filter:blur(10px)}' +
+  '.foot-inner{max-width:1200px;margin:0 auto;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}' +
+  '.muted{color:#8fa3c9}' +
+  '.empty{padding:30px;text-align:center;color:#8fa3c9;font-size:13px}' +
+  '.empty big{display:block;font-size:18px;font-weight:700;color:#cbd5e1;margin-bottom:4px}' +
+  '@media print{' +
+    'body{background:#fff;color:#000}' +
+    '#boot,.top,.foot{display:none!important}' +
+    '#root{padding:0;max-width:none;margin:0;padding:10px 12px}' +
+    '.group{page-break-inside:avoid;box-shadow:none;border-color:#00000022;background:#fff}' +
+    '.row.checked .row-main{text-decoration:line-through;color:#4b5563}' +
+    '.row.fertig .row-main{text-decoration:line-through;color:#4b5563}' +
+    '.bez{color:#000}' +
+    'a{color:#000!important;text-decoration:none}' +
+  '}' +
+'</style></head><body>' +
+'<div id="boot" style="position:fixed;right:24px;bottom:24px;z-index:9999;color:#8fa3c9;font-size:16px;">Lade Kommissionierung...</div>' +
+'<div id="root" style="display:none"></div>' +
+'<footer id="foot" class="foot" style="display:none"><div class="foot-inner">' +
+'<div class="muted" id="foot-summary">-</div>' +
+'<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+'<button type="button" class="btn soft" id="btn-print">🖨 Drucken</button>' +
+'<button type="button" class="btn ok" id="btn-copy">📋 Text kopieren</button>' +
+'<button type="button" class="btn soft" id="btn-txt">⤓ TXT speichern</button>' +
+'<button type="button" class="btn danger" id="btn-reset">↺ Haken zurücksetzen</button>' +
+'</div></div></footer>' +
+'<script>' +
+'function el(t,a,c){var e=document.createElement(t);if(a)for(var k in a){if(Object.prototype.hasOwnProperty.call(a,k)){var v=a[k];if(k==="class")e.className=v;else if(k==="style")e.setAttribute("style",v);else if(k.startsWith("on")&&typeof v==="function")e.addEventListener(k.slice(2).toLowerCase(),v);else if(k==="html")e.innerHTML=v;else e.setAttribute(k,v)}}c=c||[];if(!Array.isArray(c))c=[c];for(var i=0;i<c.length;i+=1){var n=c[i];if(n==null)continue;if(typeof n==="string"||typeof n==="number")e.appendChild(document.createTextNode(String(n)));else e.appendChild(n)}return e}' +
+'function text(s){return document.createTextNode(String(s==null?"":s))}' +
+'function escapeHtml(s){s=String(s==null?"":s);return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\\x27/g,"&#039;")}' +
+'function cleanOldLs(){var prefix="kommissionierung.checked.";var keys=[];for(var i=0;i<localStorage.length;i+=1){var k=localStorage.key(i);if(k&&k.indexOf(prefix)===0)keys.push(k)}var now=Date.now();var cutoff=14*86400*1000;for(var j=0;j<keys.length;j+=1){var dk=keys[j];var ds=dk.slice(prefix.length);var dt=new Date(ds+"T00:00:00").getTime();if(!isNaN(dt)&&now-dt>cutoff){try{localStorage.removeItem(dk)}catch(e){}}}}' +
+'var state={mode:"auftrag",onlyOpen:false,last:null,checked:{},cleaned:false};' +
+'function keyForDate(iso){return"kommissionierung.checked."+iso}' +
+'function loadChecked(iso){if(!state.cleaned){cleanOldLs();state.cleaned=true}var raw=null;try{raw=localStorage.getItem(keyForDate(iso))}catch(e){raw=null}var obj={};if(raw){try{obj=JSON.parse(raw)||{}}catch(e){obj={}}}state.checked=obj;return obj}' +
+'function saveChecked(iso){try{localStorage.setItem(keyForDate(iso),JSON.stringify(state.checked||{}))}catch(e){}}' +
+'async function fetchJson(u){var r=await fetch(u,{credentials:"same-origin",cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json()}' +
+'function buildProgress(d){if(!d||!Array.isArray(d.aufgaben))return{total:0,done:0,percent:0};var total=d.aufgaben.length;var done=0;for(var i=0;i<d.aufgaben.length;i+=1){if(state.checked[d.aufgaben[i].id])done+=1}return{total:total,done:done,percent:total?Math.round(100*done/total):0}}' +
+'function rowToText(d,mode){var lines=[];lines.push("Kommissionierung \\u2013 "+(d.datumLabel||""));if(d.istWochenende||d.istFeiertag){lines.push("Hinweis: "+(d.istWochenende?"Wochenende ":"")+(d.istFeiertag?"(Feiertag)":""))}lines.push("");if(mode==="kategorie"){var cats={};for(var i=0;i<d.aufgaben.length;i+=1){var r=d.aufgaben[i];if(!cats[r.typ])cats[r.typ]={label:r.kategorieLabel,rows:[]};cats[r.typ].rows.push(r)}var keys=Object.keys(cats).sort();for(var k=0;k<keys.length;k+=1){var c=cats[keys[k]];lines.push("## "+c.label+" ("+c.rows.length+"x)");for(var j=0;j<c.rows.length;j+=1){var rr=c.rows[j];lines.push((state.checked[rr.id]?"[x]":"[ ]")+" "+(rr.anzahl>1?rr.anzahl+"x ":"")+rr.bezeichnung+" \\u2013 "+rr.kurzAdresse+(rr.details&&rr.details.length?(" | Details: "+rr.details.join("; ")):"")+(rr.materialOffen&&rr.materialOffen.length?" | \\u26A0\\uFE0F "+rr.materialOffen.length+" offen":"")+(rr.materialBestellt&&rr.materialBestellt.length?" | \\u2705 "+rr.materialBestellt.length+" bestellt":""))}lines.push("")}}else{var byId={};for(var i2=0;i2<d.aufgaben.length;i2+=1){var r2=d.aufgaben[i2];if(!byId[r2.auftragId])byId[r2.auftragId]={titel:r2.auftragTitel,adresse:r2.kurzAdresse,rows:[]};byId[r2.auftragId].rows.push(r2)}var ids=Object.keys(byId);for(var i3=0;i3<ids.length;i3+=1){var g=byId[ids[i3]];lines.push("### "+g.titel);lines.push("    "+g.adresse);for(var j2=0;j2<g.rows.length;j2+=1){var r3=g.rows[j2];lines.push("  "+(state.checked[r3.id]?"[x]":"[ ]")+" "+(r3.anzahl>1?r3.anzahl+"x ":"")+r3.bezeichnung+(r3.kategorieLabel?" ("+r3.kategorieLabel+")":"")+(r3.details&&r3.details.length?(" | "+r3.details.join("; ")):"")+(r3.materialOffen&&r3.materialOffen.length?" | \\u26A0\\uFE0F "+r3.materialOffen.length+" offen":"")+(r3.materialBestellt&&r3.materialBestellt.length?" | \\u2705 "+r3.materialBestellt.length+" bestellt":""))}lines.push("")}}var p=buildProgress(d);lines.push("Fortschritt: "+p.done+"/"+p.total+" ("+p.percent+"%)");return lines.join("\\n")}' +
+'function download(filename,text){var a=document.createElement("a");var blob=new Blob([text],{type:"text/plain;charset=utf-8"});var url=URL.createObjectURL(blob);a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url)},0)}' +
+'function toast(msg){var t=el("div",{style:"position:fixed;top:14px;right:14px;z-index:999;padding:10px 14px;border-radius:10px;background:#0ea5e9;color:#001225;border:1px solid #7dd3fc;font-weight:700;box-shadow:0 10px 30px rgba(14,165,233,.4)"});t.appendChild(text(msg));document.body.appendChild(t);setTimeout(function(){try{document.body.removeChild(t)}catch(e){}},1800)}' +
+'function render(d){state.last=d;var iso=d.datumIso;loadChecked(iso);document.getElementById("boot").style.display="none";var root=document.getElementById("root");root.style.display="block";while(root.firstChild)root.removeChild(root.firstChild);var foot=document.getElementById("foot");foot.style.display="block";var dtm=document.getElementById("datum");if(dtm)dtm.value=iso;var note=[];if(d.istWochenende)note.push(el("span",{class:"warn"},["Wochenende"]));if(d.istFeiertag)note.push(el("span",{class:"warn"},["Feiertag"]));note.unshift(el("span",{class:"okpi"},[d.datumLabel]));root.appendChild(el("div",{class:"top"},[el("h1",null,[el("span",{class:"brand"},["\\uD83D\\uDCE6 Kommissionierung "]),"Montage-Termine ",escapeHtml(d.datumLabel)]),el("div",{class:"toolbar"},[el("label",null,["Datum:",el("input",{type:"date",id:"datum",value:iso})]),note.length?el("div",null,note):el("span"),el("div",{class:"sep"}),el("select",{id:"mode",title:"Ansicht"},[el("option",{value:"auftrag",selected:state.mode==="auftrag"?"selected":null},["Nach Auftrag (pro Kunde)"]),el("option",{value:"kategorie",selected:state.mode==="kategorie"?"selected":null},["Nach Kategorie"])]),el("button",{type:"button",class:"btn soft",id:"onlyopen"},[(state.onlyOpen?"Zeige alle":"Nur offene")]),el("button",{type:"button",class:"btn soft",id:"checkall"},["Alle auswählen"]),el("button",{type:"button",class:"btn soft",id:"uncheckall"},["Alle abwählen"]),el("div",{class:"progress-wrap"},[el("div",{class:"progress"},[el("span",{id:"prog-bar",style:"width:"+buildProgress(d).percent+"%"})]),el("span",{id:"prog-text"},[buildProgress(d).done+"/"+buildProgress(d).total])])])]));var aufgaben=d.aufgaben||[];if(!aufgaben.length){root.appendChild(el("div",{class:"group empty"},[el("big",null,["Keine Montage-Termine für dieses Datum."]),"Wähle ein anderes Datum über das Kalender-Feld aus."]))}else if(state.mode==="auftrag"){var byId={};for(var i=0;i<aufgaben.length;i+=1){var r=aufgaben[i];if(!byId[r.auftragId])byId[r.auftragId]=[];byId[r.auftragId].push(r)}var ids=Object.keys(byId);for(var i2=0;i2<ids.length;i2+=1){var rows=byId[ids[i2]].sort(function(a,b){return String(a.typ).localeCompare(String(b.typ))||String(a.bezeichnung).localeCompare(String(b.bezeichnung))});var ex=rows[0];var totalR=rows.length;var doneR=0;for(var k=0;k<totalR;k+=1)if(state.checked[rows[k].id])doneR+=1;var pctR=totalR?Math.round(100*doneR/totalR):0;var group=el("div",{class:"group"},[el("h2",null,[el("span",null,[escapeHtml(ex.auftragTitel)]),el("span",{class:"grp-sub"},[escapeHtml(ex.kurzAdresse)]),el("div",{class:"progress-wrap"},[el("div",{class:"progress"},[el("span",{style:"width:"+pctR+"%"})]),el("span",null,[doneR+"/"+totalR])])]),el("div",{class:"grp-meta"},[el("span",{class:"pil"},[(ex.origin?escapeHtml(ex.origin)+" · ":"")+" "+(ex.montageDatumIso||"")]),totalR+" Positionen"+(doneR===totalR&&totalR>0?" · erledigt":"")]),el("div",{class:"rows"},[])]);var catRows=group.querySelector(".rows");var visible=0;for(var j=0;j<rows.length;j+=1){var r2=rows[j];if(state.onlyOpen&&state.checked[r2.id])continue;visible+=1;catRows.appendChild(buildRow(r2))}if(!visible&&state.onlyOpen)group.style.display="none";root.appendChild(group)}}else{var cats={};for(var i3=0;i3<aufgaben.length;i3+=1){var r3=aufgaben[i3];if(!cats[r3.typ])cats[r3.typ]={label:r3.kategorieLabel,rows:[]};cats[r3.typ].rows.push(r3)}var keys=Object.keys(cats).sort();for(var kk=0;kk<keys.length;kk+=1){var c=cats[keys[kk]];var catGrp=el("div",{class:"group"},[el("h2",null,[el("span",null,[c.label]),el("span",{class:"grp-sub"},[c.rows.length+"x"])]),el("div",{class:"rows"},[])]);var cr=catGrp.querySelector(".rows");var vis=0;for(var jj=0;jj<c.rows.length;jj+=1){var r4=c.rows[jj];if(state.onlyOpen&&state.checked[r4.id])continue;vis+=1;cr.appendChild(buildRow(r4))}if(!vis&&state.onlyOpen)catGrp.style.display="none";root.appendChild(catGrp)}}var p2=buildProgress(d);var pb=document.getElementById("prog-bar");if(pb)pb.style.width=p2.percent+"%";var pt=document.getElementById("prog-text");if(pt)pt.textContent=p2.done+"/"+p2.total;var fs=document.getElementById("foot-summary");if(fs)fs.textContent="Stand: "+new Date().toLocaleTimeString("de-DE")+" · "+(d.statistik&&d.statistik.aufträge?d.statistik.aufträge.length+" Aufträge · ":"")+p2.total+" Zeilen · "+p2.done+" erledigt ("+p2.percent+"%)";var btnOpen=document.getElementById("onlyopen");if(btnOpen)btnOpen.textContent=state.onlyOpen?"Zeige alle":"Nur offene";var dm=document.getElementById("datum");if(dm)dm.addEventListener("change",load);var md=document.getElementById("mode");if(md)md.addEventListener("change",function(e){state.mode=e.target.value;if(state.last)render(state.last)});var oo=document.getElementById("onlyopen");if(oo)oo.addEventListener("click",function(){state.onlyOpen=!state.onlyOpen;if(state.last)render(state.last)});var ca=document.getElementById("checkall");if(ca)ca.addEventListener("click",function(){if(!state.last)return;var rows=state.last.aufgaben;for(var i=0;i<rows.length;i+=1)state.checked[rows[i].id]=true;saveChecked(state.last.datumIso);render(state.last)});var ua=document.getElementById("uncheckall");if(ua)ua.addEventListener("click",function(){if(!state.last)return;state.checked={};saveChecked(state.last.datumIso);render(state.last)})}' +
+'function buildRow(r){var isc=!!state.checked[r.id];var attr={class:"row"+(isc?" checked":"")+(r.teilFertig?" fertig":""),"data-rowid":r.id};var cb=el("input",{type:"checkbox"});cb.checked=isc;cb.addEventListener("change",function(e){var rid=r.id;if(cb.checked)state.checked[rid]=true;else delete state.checked[rid];saveChecked(state.last&&state.last.datumIso);var gp=cb.closest(".row");gp.classList.toggle("checked",cb.checked);if(state.mode==="auftrag"){var gr=cb.closest(".group");if(gr){var tit=gr.querySelector("h2");var sp=gr.querySelectorAll(".row");var done=0,tot=sp.length;for(var i=0;i<sp.length;i+=1)if(sp[i].querySelector("input").checked)done+=1;var pct=tot?Math.round(100*done/tot):0;var bars=gr.querySelectorAll(".progress > span");if(bars.length)bars[0].style.width=pct+"%";var txts=gr.querySelectorAll(".progress + span");if(txts.length)txts[0].textContent=done+"/"+tot}var all=state.last.aufgaben.length;var doneAll=0;for(var j=0;j<state.last.aufgaben.length;j+=1)if(state.checked[state.last.aufgaben[j].id])doneAll+=1;var pall=all?Math.round(100*doneAll/all):0;document.getElementById("prog-bar").style.width=pall+"%";document.getElementById("prog-text").textContent=doneAll+"/"+all;var fs=document.getElementById("foot-summary");if(fs)fs.textContent="Stand: "+new Date().toLocaleTimeString("de-DE")+" · "+(state.last&&state.last.statistik&&state.last.statistik.aufträge?state.last.statistik.aufträge.length+" Aufträge · ":"")+all+" Zeilen · "+doneAll+" erledigt ("+pall+"%)";if(state.onlyOpen&&cb.checked){gp.style.display="none"}}});var main=el("div",{class:"row-main"},[el("div",{class:"row-head"},[el("span",{class:"cat"},[r.kategorieLabel]),r.anzahl>1?el("span",{class:"anz"},[r.anzahl+"×"]):el("span"),el("span",{class:"bez"},[escapeHtml(r.bezeichnung)])])]);if(r.details&&r.details.length){var dets=el("div",{class:"details"},[]);for(var di=0;di<r.details.length;di+=1){dets.appendChild(el("code",{},[escapeHtml(r.details[di])]))}main.appendChild(dets)}var right=el("div",{class:"row-right"},[r.quelle==="Bestellung"?el("span",{class:"pil blue"},["Bestellung"]):el("span",{class:"pil green"},["Produktion"]),r.teilFertig?el("span",{class:"pil green"},["✅ Fertig"]):el("span"),r.materialBestellt&&r.materialBestellt.length?el("span",{class:"pil blue"},["✅ "+r.materialBestellt.length+" bestellt"]):el("span"),r.materialOffen&&r.materialOffen.length?el("span",{class:"pil red"},["⚠️ "+r.materialOffen.length+" fehlt"]):el("span")]);var rd=el("div",attr,[cb,main,right]);return rd}' +
+'async function load(){try{var datum=document.getElementById("datum");var iso=datum?datum.value:"";var url="/display/kommissionierung/api/board";if(iso)url+="?date="+encodeURIComponent(iso);var data=await fetchJson(url);if(state.last&&state.last.datumIso&&state.last.datumIso!==data.datumIso){state.checked={}}render(data)}catch(e){document.getElementById("boot").style.display="flex";document.getElementById("boot").textContent="Fehler beim Laden: "+String(e&&e.message?e.message:e)}}' +
+'window.addEventListener("DOMContentLoaded",function(){var bpr=document.getElementById("btn-print");if(bpr)bpr.addEventListener("click",function(){try{window.print()}catch(e){}});var bcp=document.getElementById("btn-copy");if(bcp)bcp.addEventListener("click",async function(){if(!state.last)return;var txt=rowToText(state.last,state.mode);try{await navigator.clipboard.writeText(txt);toast("Text kopiert ✓")}catch(e){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("Text kopiert ✓")}catch(err){toast("Kopieren fehlgeschlagen")}document.body.removeChild(ta)}});var btx=document.getElementById("btn-txt");if(btx)btx.addEventListener("click",function(){if(!state.last)return;var t=rowToText(state.last,state.mode);var nm="Kommissionierung_"+String(state.last.datumIso||"")+".txt";download(nm,t);toast("TXT gespeichert: "+nm)});var brs=document.getElementById("btn-reset");if(brs)brs.addEventListener("click",function(){if(!state.last)return;if(!confirm("Alle Haken für dieses Datum löschen?"))return;state.checked={};saveChecked(state.last.datumIso);render(state.last);toast("Zurückgesetzt")});load();setInterval(load,60000)})' +
+'</script>' +
+'</body></html>';
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(css);
 });
 
 module.exports = router;

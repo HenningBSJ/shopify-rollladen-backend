@@ -1,0 +1,23 @@
+[Unit]
+Description=Cloudflared Named Tunnel (Rollladen Monitor Public URL)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/srv/rollladen-monitor/cloudflared
+EnvironmentFile=-/etc/rollladen-monitor.env
+ExecStart=/usr/bin/cloudflared --config /srv/rollladen-monitor/cloudflared/config.yml --no-autoupdate tunnel run
+Restart=on-failure
+RestartSec=8
+TimeoutStartSec=30
+TimeoutStopSec=20
+KillSignal=SIGTERM
+StandardOutput=journal+console
+StandardError=journal+console
+SyslogIdentifier=rollladen-cloudflared
+
+[Install]
+WantedBy=multi-user.target

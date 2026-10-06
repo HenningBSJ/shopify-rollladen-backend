@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor · Statustest</title><style>
+body{font:16px system-ui,sans-serif;margin:24px auto;padding:0 20px;max-width:1100px;color:#20242b;background:#f5f6f8}
+section{background:white;padding:20px;margin:18px 0;border:1px solid #d5d9df;border-radius:10px}
+label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;padding:8px;max-width:100%;box-sizing:border-box}
+button{cursor:pointer}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #ddd;padding:10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:12px}#message{white-space:pre-wrap;color:#9b2727}
+.hint{color:#505763}textarea{width:100%;min-height:140px}h1{margin-bottom:6px}
+</style></head><body>
+<h1>Produktions- und Materialstatus · Testfassung 4</h1>
+<p class="hint">Eigene Testhistorie. Slack-Ausgangsstände sind datiert. Kalenderänderungen sind deaktiviert.</p>
+<p><a href="/display">Produktionsmonitor</a> · <button id="refresh">Ansicht aktualisieren</button></p>
+<p id="message" role="status"></p>
+<section><h2>Aufträge</h2><table><thead><tr><th>Auftrag</th><th>Produktion aus Slack</th><th>Material</th><th>Ausgangsstand</th></tr></thead><tbody id="orders"></tbody></table>
+<p class="hint">Kein Eintrag? Zuerst den lesenden Slack-Import ausführen oder einen Testauftrag anlegen.</p>
+<label>Auftrags-ID <input id="orderId" placeholder="z. B. LAB-DEMO"></label><button id="load">Auftrag öffnen</button>
+</section>
+<section><h2>Testperson anmelden</h2><p class="hint">Für lokale Bestätigungen und Scans. Keine Übertragung an Slack.</p>
+<label>Kennung <input id="user" value="LAB" autocomplete="username"></label>
+<label>Passwort <input id="password" type="password" autocomplete="current-password"></label><button id="login">Anmelden</button><span id="signedIn"></span>
+</section>
+<section><h2>Vollständiger Teilebedarf</h2><p>Alle benötigten Teile eintragen. Eigenproduktion und Fremdlieferungen werden getrennt bestätigt.</p>
+<div style="overflow-x:auto"><table><thead><tr><th>Bezeichnung</th><th>Bezugsart</th><th>Benötigte Menge</th><th></th></tr></thead><tbody id="partsRows"></tbody></table></div><p id="partsEmpty" class="hint">Noch keine Positionen. Zuerst einen Auftrag öffnen, dann die benötigten Teile hinzufügen.</p><button id="addPart" type="button" disabled>Position hinzufügen</button>
+<button id="requirements">Vollständigen Bedarf bestätigen</button><p class="hint">Eine neue Bedarfsrevision verlangt neue Mengenbestätigungen für alle Positionen.</p>
+<h3>Menge bestätigen</h3><label>Position <select id="part" disabled aria-describedby="partHint"><option value="">Zuerst einen Auftrag öffnen</option></select></label><label>Insgesamt bestätigte Menge <input id="quantity" type="number" min="0" step="any" value="1"></label>
+<button id="confirm" disabled>Menge bestätigen</button><p id="partHint" class="hint">Zuerst einen Auftrag öffnen und seinen vollständigen Teilebedarf speichern. Slack liefert bisher den Produktionsstatus, aber noch keine bestätigte Teileliste.</p><p class="hint">Beispiel: Von 5 benötigten Motoren sind 3 vorhanden → 3 bestätigen. Treffen später 2 weitere ein, insgesamt 5 bestätigen.</p>
+<h3>Scan erfassen</h3><label>Station <input id="station" value="LAB"></label>
+<label>Aktion <select id="action"><option value="done">Fertig</option><option value="reopen">Wieder geöffnet</option><option value="courier">Kurier</option></select></label>
+<button id="scan">Testscan speichern</button><p class="hint">Lokale Scans ändern den maßgeblichen Slack-Produktionsstatus noch nicht.</p>
+<h3>Monitor-Scan zuordnen</h3><p>Beschreibungstexte werden nicht automatisch zugeordnet. Die ausgewählte Position oben muss fachlich zum Scan passen. Eine Zuordnung bestätigt noch keine Materialmenge.</p><label>Scan-Ereignis-ID <input id="scanId"></label><button id="assign">Der ausgewählten Position zuordnen</button><h3>Korrektur</h3><label>Ereignis-ID <input id="target"></label><label>Grund <input id="reason"></label><button id="correct">Ereignis als korrigiert markieren</button>
+</section>
+<section><h2>Terminzuordnung und Vorschau</h2><p id="calendarObserved">Kalender-Ausgangsstand wird geladen …</p><label>Gelesener Kalendertermin <select id="calendarEvent"><option value="">Bitte auswählen</option></select></label><button id="selectCalendar">Ausgewählten Termin zuordnen</button><p>Diese Auswahl übernimmt ID, Titel und Farbe aus dem datierten Kalender-Ausgangsstand. Google wird dabei nicht verändert.</p><p>Diese Zuordnung wird lokal gespeichert. Termin-ID, Titel und Farbe sind manuelle Angaben und noch nicht gegen Google geprüft.</p><p>Nur für jonat.bsjalousienprofi@gmail.com. Diese Eingabe sendet nichts an Google.</p>
+<label>Testtermin-ID <input id="eventId" value="lab-event"></label><label>Bestehender Titel <input id="title" value="Testkunde – Montage"></label>
+<label>Bestehende Kundenfarbe <input id="color" value="6"></label><button id="link">Zuordnung speichern</button> <button id="preview">Vorschau zum gespeicherten Termin</button><label>Grund für das Lösen <input id="unlinkReason"></label><button id="unlink">Zuordnung lösen</button><pre id="previewOut"></pre></section>
+<section><h2>Status und unveränderter Ereignisverlauf</h2><pre id="details">Auftrag auswählen.</pre></section>
+<script>
+const $=id=>document.getElementById(id);let token=sessionStorage.getItem('monitor_lab_token')||'',state=null,dirty=false,pending=null;
+async function api(url,body){const r=await fetch(url,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d;}
+function run(fn){return async()=>{try{$('message').textContent='';await fn();}catch(e){$('message').textContent=e.message;}};}
+function order(){const id=$('orderId').value.trim();if(!id)throw Error('Auftrags-ID fehlt');return encodeURIComponent(id);}
+async function refresh(){const d=await api('/lab/api/orders');$('orders').replaceChildren();for(const row of d.orders){const tr=document.createElement('tr');const td=document.createElement('td');const b=document.createElement('button');b.textContent=row.title;b.onclick=run(async()=>{if(!allowDraftDiscard())return;partsDraftDirty=false;$('orderId').value=row.orderId;await load();});td.append(b);tr.append(td);for(const value of [row.production.status,row.material.ready?'Material bereit':'Material offen',row.slackObservedAt||'Kein Slack-Ausgangsstand']){const cell=document.createElement('td');cell.textContent=value;tr.append(cell);}$('orders').append(tr);}}
+async function load(){const d=await api('/lab/api/orders/'+order());state=d.state;if(state.calendarLink){$('eventId').value=state.calendarLink.event.id;$('title').value=state.calendarLink.event.summary;$('color').value=state.calendarLink.event.colorId||'';}if(!partsDraftDirty||partsDraftOrder!==state.orderId||partsDraftRevision!==state.revision)draftPartsFromState();$('details').textContent=JSON.stringify(d,null,2);renderParts();}
+function renderParts(){
+  const previous=$('part').value;const rows=state?.parts||[];$('part').replaceChildren();
+  $('part').disabled=!rows.length;$('confirm').disabled=!rows.length;
+  $('quantity').disabled=!rows.length;$('scan').disabled=!rows.length;$('assign').disabled=!rows.length;
+  if(!rows.length){const o=document.createElement('option');o.value='';o.textContent='Noch kein Teilebedarf gespeichert';$('part').append(o);$('partHint').textContent='Für diesen Auftrag fehlt die Teileliste. Oben mit „Position hinzufügen“ alle benötigten Teile erfassen und anschließend „Vollständigen Bedarf bestätigen“ wählen.';return;}
+  for(const p of rows){const o=document.createElement('option');o.value=p.id;o.textContent=p.label+' – '+(p.source==='production'?'Eigenproduktion':'Fremdlieferung')+' – '+p.confirmed+' von '+p.required+' bestätigt';$('part').append(o);}
+  if(rows.some(p=>p.id===previous))$('part').value=previous;showQuantity();
+}
+function showQuantity(){const p=state?.parts.find(p=>p.id===$('part').value);if(!p)return;$('quantity').max=p.required;$('quantity').value=p.confirmed;$('partHint').textContent=p.label+': benötigt '+p.required+', bisher bestätigt '+p.confirmed+'. Jetzt die insgesamt bestätigte Menge eintragen.';}
+$('part').onchange=showQuantity;
+async function save(type,payload){if(!token)throw Error('Bitte Testperson anmelden');if(!state||state.orderId!==$('orderId').value.trim())throw Error('Zuerst diesen Auftrag öffnen');
+const key=JSON.stringify({orderId:state.orderId,type,payload});if(!pending||pending.key!==key)pending={key,id:crypto.randomUUID()};
+await api('/lab/api/orders/'+order()+'/events',{id:pending.id,type,payload});pending=null;dirty=partsDraftDirty&&type!=='requirements';await load();await refresh();$('message').textContent='In der Testhistorie gespeichert.';}
+$('refresh').onclick=run(refresh);$('load').onclick=run(async()=>{if(!allowDraftDiscard())return;partsDraftDirty=false;await load();});
+$('login').onclick=run(async()=>{const d=await api('/api/monitor-auth/login',{login:$('user').value,password:$('password').value});token=d.token;sessionStorage.setItem('monitor_lab_token',token);$('password').value='';$('signedIn').textContent=' Angemeldet';});
+
+$('confirm').onclick=run(()=>save('confirmation',{revision:state?.revision,partId:$('part').value,quantity:Number($('quantity').value)}));
+$('scan').onclick=run(()=>save('scan',{revision:state?.revision,partId:$('part').value,action:$('action').value,station:$('station').value}));
+$('correct').onclick=run(()=>save('correction',{targetId:$('target').value,reason:$('reason').value}));
+$('link').onclick=run(()=>save('calendar_link',{previousLink:state?.linkRevision||null,calendarId:'jonat.bsjalousienprofi@gmail.com',event:{id:$('eventId').value,summary:$('title').value,colorId:$('color').value}}));
+$('unlink').onclick=run(()=>save('calendar_unlink',{previousLink:state?.linkRevision,reason:$('unlinkReason').value}));
+$('assign').onclick=run(()=>save('scan_assignment',{scanId:$('scanId').value,revision:state?.revision,partId:$('part').value}));
+$('preview').onclick=run(async()=>{$('previewOut').textContent=JSON.stringify(await api('/lab/api/orders/'+order()+'/linked-preview'),null,2);});
+document.addEventListener('input',()=>{dirty=true;});window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});run(refresh)();
+// Embedded in the test panel by build-panel-v4.cjs; no live monitor changes.
+let partsDraft = [], partsDraftOrder = null, partsDraftRevision = null, partsDraftDirty = false;
+function markPartsDraft(){partsDraftDirty=true;dirty=true;document.dispatchEvent(new Event('input'));}
+function draftPartsFromState(){
+  partsDraft=state.parts.map(p=>({id:p.id,label:p.label,source:p.source,required:p.required}));
+  partsDraftOrder=state.orderId;partsDraftRevision=state.revision;partsDraftDirty=false;renderPartsEditor();
+}
+function renderPartsEditor(){
+  $('partsRows').replaceChildren();
+  $('partsEmpty').hidden=partsDraft.length>0;
+  $('addPart').disabled=!state;
+  $('requirements').disabled=!state||!partsDraft.length;
+  for(const p of partsDraft){
+    const tr=document.createElement('tr');
+    function field(node){const td=document.createElement('td');td.append(node);tr.append(td);}
+    const label=document.createElement('input');label.value=p.label;label.maxLength=500;label.setAttribute('aria-label','Bezeichnung');
+    label.oninput=()=>{p.label=label.value;markPartsDraft();};field(label);
+    const source=document.createElement('select');source.setAttribute('aria-label','Bezugsart');
+    for(const [value,text] of [['production','Eigenproduktion'],['delivery','Fremdlieferung']]){const o=document.createElement('option');o.value=value;o.textContent=text;source.append(o);}source.value=p.source;
+    source.onchange=()=>{p.source=source.value;markPartsDraft();};field(source);
+    const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.step='any';quantity.value=p.required;quantity.setAttribute('aria-label','Benötigte Menge');
+    quantity.oninput=()=>{p.required=quantity.value;markPartsDraft();};field(quantity);
+    const remove=document.createElement('button');remove.type='button';remove.textContent='Entfernen';
+    remove.onclick=()=>{partsDraft=partsDraft.filter(row=>row.id!==p.id);markPartsDraft();renderPartsEditor();};field(remove);
+    $('partsRows').append(tr);
+  }
+}
+function partsForSave(){
+  if(!state||state.orderId!==partsDraftOrder||state.revision!==partsDraftRevision)throw Error('Auftragsstand geändert. Bedarf neu laden.');
+  if(!partsDraft.length)throw Error('Mindestens eine benötigte Position eintragen.');
+  return partsDraft.map((p,index)=>{
+    const label=p.label.trim(),required=Number(p.required);
+    if(!label||!Number.isFinite(required)||required<=0)throw Error('Zeile '+(index+1)+': Bezeichnung und benötigte Menge größer als 0 eintragen.');
+    return {id:p.id,label,source:p.source,required};
+  });
+}
+function allowDraftDiscard(){return !partsDraftDirty||window.confirm('Ungespeicherte Änderungen am Teilebedarf verwerfen?');}
+$('addPart').onclick=run(()=>{if(!state)throw Error('Zuerst Auftrag öffnen');partsDraft.push({id:crypto.randomUUID(),label:'',source:'production',required:1});markPartsDraft();renderPartsEditor();});
+$('requirements').onclick=run(async()=>{
+  const parts=partsForSave();
+  const unchanged=JSON.stringify(parts)===JSON.stringify(state.parts.map(p=>({id:p.id,label:p.label,source:p.source,required:p.required})));
+  if(unchanged){$('message').textContent='Der Teilebedarf ist unverändert. Bestehende Mengenbestätigungen bleiben erhalten.';return;}
+  if(state.revision&&!window.confirm('Geänderten Teilebedarf speichern? Danach müssen alle Mengen für diesen neuen Bedarf erneut bestätigt werden.'))return;
+  await save('requirements',{previousRevision:state.revision,parts});
+});
+renderPartsEditor();
+
+
+async function loadCalendar(){const c=await api('/lab/api/calendar-catalog');$('calendarObserved').textContent=c.observedAt?'Kalender gelesen am '+new Date(c.observedAt).toLocaleString('de-DE')+' · '+c.events.length+' Termine':'Kein Kalender-Ausgangsstand vorhanden';for(const e of c.events){const o=document.createElement('option');o.value=e.id;o.textContent=new Date(e.start).toLocaleString('de-DE')+' · '+e.summary;$('calendarEvent').append(o);}}
+$('selectCalendar').onclick=run(async()=>{if(!token)throw Error('Bitte Testperson anmelden');if(!state||state.orderId!==$('orderId').value.trim())throw Error('Zuerst Auftrag öffnen');if(!$('calendarEvent').value)throw Error('Kalendertermin auswählen');const body={previousLink:state.linkRevision,eventId:$('calendarEvent').value};const key=JSON.stringify({orderId:state.orderId,calendarSelection:body});if(!pending||pending.key!==key)pending={key,id:crypto.randomUUID()};await api('/lab/api/orders/'+order()+'/calendar-selection',{id:pending.id,...body});pending=null;await load();$('message').textContent='Termin lokal zugeordnet. Kalender unverändert.';});
+run(loadCalendar)();
+</script></body></html>

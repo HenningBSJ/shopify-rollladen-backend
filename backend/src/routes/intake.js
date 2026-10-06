@@ -1,8 +1,24 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const stabilization = require('../stabilization');
 const { monitorHttpAuthMiddleware } = require('../middleware');
 const { postMessage, listColumns, listItems, listSchema, createItem } = require('../slack');
+const {
+  SP_B35_PARTS,
+  SP_B35_HOOKS,
+  SP_B35_PARTS_BY_POS,
+  getSpB35Part,
+  formatSizeMm,
+  parseMmValue,
+  formatCountedCut,
+  isInsidePosition,
+  isOutsidePosition,
+  lookupSpB35HookEntry,
+  resolveSpB35Keder,
+  resolveSpB35Consumption,
+  calculateSpB35,
+} = require('../spb35');
 
 const router = express.Router();
 router.use(monitorHttpAuthMiddleware);
@@ -16,9 +32,6 @@ function loadJsonFromData(fileName, fallback) {
   }
 }
 
-const SP_B35_PARTS = loadJsonFromData('sp-b35-parts.json', { parts: [], rules: {} });
-const SP_B35_HOOKS = loadJsonFromData('sp-b35-hook-lookup.json', { standardHooks: [], federhakenHooks: [] });
-const SP_B35_PARTS_BY_POS = new Map((Array.isArray(SP_B35_PARTS.parts) ? SP_B35_PARTS.parts : []).map((part) => [Number(part.pos), part]));
 const PRODUCTION_PARTS_FILE = path.join(__dirname, '..', '..', 'data', 'production-parts.json');
 
 function readJsonObject(filePath, fallback) {
@@ -95,217 +108,15 @@ function hasAnyText(...vals) {
   return vals.some(v => normalize(v));
 }
 
-function getSpB35Part(pos) {
-  return SP_B35_PARTS_BY_POS.get(Number(pos)) || null;
+function truncateTo(s, max) {
+  const v = String(s ?? '');
+  const n = Number(max) || 0;
+  if (n <= 0 || v.length <= n) return v;
+  return v.slice(0, Math.max(0, n - 1)) + '…';
 }
 
-function formatSizeMm(widthMm, heightMm) {
-  const w = Number(widthMm);
-  const h = Number(heightMm);
-  if (!Number.isFinite(w) || !Number.isFinite(h)) return '';
-  return `${Math.round(w)} x ${Math.round(h)} mm`;
-}
-
-function parseMmValue(value) {
-  const n = asInt(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function formatCountedCut(count, sizeMm) {
-  const n = Number(sizeMm);
-  if (!Number.isFinite(n)) return '';
-  return `${count} x ${Math.round(n)} mm`;
-}
-
-function isInsidePosition(value) {
-  const s = normalize(value).toLowerCase();
-  return s === 'innenliegend';
-}
-
-function isOutsidePosition(value) {
-  const s = normalize(value).toLowerCase();
-  return s === 'außenliegend' || s === 'aussenliegend';
-}
-
-function lookupSpB35HookEntry(xMm, useFederhaken) {
-  if (!Number.isFinite(Number(xMm))) return null;
-  const list = Array.isArray(useFederhaken ? SP_B35_HOOKS.federhakenHooks : SP_B35_HOOKS.standardHooks)
-    ? (useFederhaken ? SP_B35_HOOKS.federhakenHooks : SP_B35_HOOKS.standardHooks)
-    : [];
-  return list.find((entry) => Number(entry && entry.xMm) === Number(xMm)) || null;
-}
-
-function resolveSpB35Keder(meshLabel) {
-  const mesh = normalize(meshLabel).toLowerCase();
-  if (!mesh) return null;
-  if (mesh === 'standard' || mesh === 'durchblick' || mesh === 'pollenschutz') {
-    return { partPos: 5, label: 'PVC Keder Ø5,1 mm', articleNo: '300135300 / 300135400' };
-  }
-  if (mesh === 'reißfest' || mesh === 'reissfest' || mesh === 'edelstahl') {
-    return { partPos: 6, label: 'PVC Keder Ø4,7 mm', articleNo: '300235300 / 300235400' };
-  }
-  return null;
-}
-
-function resolveSpB35Consumption(details, calc) {
-  const d = details || {};
-  const c = calc || {};
-  const parts = [];
-  const pushPart = (label, qty, extra = {}) => {
-    const n = Number(qty);
-    if (!Number.isFinite(n) || n <= 0) return;
-    parts.push({ label, qty: Math.round(n), ...extra });
-  };
-  const brushLengthMm = Number.isFinite(Number(c.brushLengthMm)) ? Number(c.brushLengthMm) : null;
-  const useFederhaken = !!c.useFederhaken;
-  const needsMiddleLatch = !!c.needsMiddleLatch;
-  const needsStabilization = !!c.needsStabilization;
-  const mesh = normalize(d.insectMesh);
-  const keder = resolveSpB35Keder(mesh);
-
-  pushPart('SP-B 35 Profil', 4, { unit: 'Stk', articleNo: '3001023FF' });
-  pushPart('Eckverbinder', 4, { unit: 'Stk', articleNo: '300130500' });
-  pushPart('Schlitten 1 mm', useFederhaken ? 6 : 4, { unit: 'Stk', articleNo: '300141200' });
-  pushPart('Griffleiste zum Anschrauben', 2, { unit: 'Stk', articleNo: '300138200' });
-  if (needsMiddleLatch) {
-    pushPart('Schlitten 1 mm', 2, { unit: 'Stk', articleNo: '300141200', reason: 'Grifflasche/Mittelarretierung' });
-    pushPart('Platte für Mittelarretierung', 2, { unit: 'Stk', articleNo: '300141300' });
-  }
-  if (useFederhaken) {
-    pushPart('AL-IS Federhakenaufnahme', 2, { unit: 'Stk', articleNo: '300140100' });
-  } else {
-    pushPart('Haken lang', needsMiddleLatch ? 4 : 2, { unit: 'Stk', articleNo: c.hookArticleNo || '3001420xx' });
-    pushPart('Haken kurz', 2, { unit: 'Stk', articleNo: '3001450xx' });
-  }
-  if (keder) pushPart(keder.label, 1, { unit: 'Satz', articleNo: keder.articleNo });
-  if (needsStabilization) {
-    pushPart('Stabilisierungsprofil', 1, { unit: 'Stk', articleNo: '3001030FF' });
-    pushPart('Verbinder für Stabilisierungsprofil', 2, { unit: 'Stk', articleNo: '300130200' });
-  }
-  if (brushLengthMm) pushPart(`Bürste ${Math.round(brushLengthMm)} mm`, 1, { unit: 'Satz' });
-
-  return parts;
-}
-
-function calculateSpB35(details) {
-  const d = details || {};
-  if (normalize(d.insectSubtype) !== 'Spannrahmen') return null;
-
-  const widthMm = parseMmValue(d.insectWidthMm);
-  const heightMm = parseMmValue(d.insectHeightMm);
-  const xRawMm = parseMmValue(d.spannHakenLengthMm);
-  const position = normalize(d.spannPosition);
-  const useFederhaken = normalize(d.spannFederstifte).toLowerCase() === 'ja';
-  const xMm = useFederhaken ? null : (Number.isFinite(xRawMm) ? xRawMm : 4);
-  const mesh = normalize(d.insectMesh);
-  const color = normalize(d.insectColor);
-  const brushPosition = normalize(d.spannBrushPosition) || 'zum Fenster';
-  const brushLengthMm = parseMmValue(d.spannBrushLengthMm) || 8;
-  const stabilizationMode = normalize(d.spannStabilizationMode) || 'Auto';
-
-  let finishedWidthMm = null;
-  let finishedHeightMm = null;
-  if (Number.isFinite(widthMm) && Number.isFinite(heightMm)) {
-    if (useFederhaken) {
-      if (isOutsidePosition(position)) {
-        finishedWidthMm = (widthMm + 36) - 6;
-        finishedHeightMm = (heightMm + 40) - 6;
-      } else {
-        finishedWidthMm = widthMm - 6;
-        finishedHeightMm = heightMm - 6;
-      }
-    } else if (isInsidePosition(position)) {
-      finishedWidthMm = widthMm - 4;
-      finishedHeightMm = heightMm - 4;
-    } else if (isOutsidePosition(position)) {
-      finishedWidthMm = widthMm + 36;
-      finishedHeightMm = heightMm + 40;
-    }
-  }
-
-  let warning = '';
-  if (useFederhaken) {
-    if (!(Number.isFinite(finishedWidthMm) && Number.isFinite(finishedHeightMm))) {
-      warning = 'Federstifte aktiv: Fertigmaß-Basis bitte noch fachlich bestätigen.';
-    } else if (!isInsidePosition(position) && !isOutsidePosition(position)) {
-      warning = 'Federstifte aktiv: Lage wurde automatisch auf innenliegend angenommen (Standard-Abzug -6 mm). Bitte fachlich bestätigen.';
-    }
-  }
-
-  const autoNeedsStabilization = Number.isFinite(heightMm) ? heightMm >= 1250 : null;
-  let needsStabilization = autoNeedsStabilization;
-  if (autoNeedsStabilization === true) needsStabilization = true;
-  else if (stabilizationMode === 'Ja') needsStabilization = true;
-  else if (stabilizationMode === 'Nein') needsStabilization = false;
-  const needsMiddleLatch = Number.isFinite(heightMm) ? heightMm >= 1300 : null;
-  const gripPosition = Number.isFinite(heightMm)
-    ? (heightMm < 1000 ? 'Mitte' : '2/5 von unten')
-    : '';
-  const keder = resolveSpB35Keder(mesh);
-  const hookEntry = useFederhaken ? null : lookupSpB35HookEntry(xMm, false);
-
-  const frameCutLine = Number.isFinite(finishedWidthMm) && Number.isFinite(finishedHeightMm)
-    ? `Schnittmaß SP-B 35 (Gehrungssäge): ${formatCountedCut(2, finishedWidthMm)} x ${formatCountedCut(2, finishedHeightMm)}`
-    : '';
-  const stabilizationCutMm = needsStabilization && Number.isFinite(finishedWidthMm)
-    ? finishedWidthMm - 70
-    : null;
-  const stabilizationCenterFromInnerEdgeMm = needsStabilization && Number.isFinite(finishedHeightMm)
-    ? Math.round((finishedHeightMm - 70) / 2)
-    : null;
-  const stabilizationLine = Number.isFinite(stabilizationCutMm)
-    ? `Stabilisierungsprofil (Profilsäge): ${formatCountedCut(1, stabilizationCutMm)}, Einklebepunkt ${Math.round(stabilizationCenterFromInnerEdgeMm)} mm vom Innenrand`
-    : '';
-  const slideLine = useFederhaken
-    ? 'Schlitten auf Federhakenseite jeweils 3'
-    : `Schlitten auf Hakenseite jeweils 2${needsMiddleLatch ? ' plus jeweils 1 Schlitten für jeweils 1 Grifflasche' : ''}`;
-  const brushLine = brushPosition === 'zum Fenster' && brushLengthMm === 8
-    ? 'Bürste zum Fenster'
-    : `Bürste ${brushPosition}, ${Math.round(brushLengthMm)} mm`;
-  const productionLines = [
-    frameCutLine,
-    stabilizationLine,
-    slideLine,
-    brushLine,
-    warning,
-  ].filter(Boolean);
-
-  const consumption = resolveSpB35Consumption(d, {
-    useFederhaken,
-    needsMiddleLatch,
-    needsStabilization,
-    brushLengthMm,
-    hookArticleNo: hookEntry ? normalize(hookEntry.hookLongArticleNo) : '',
-    kederLabel: keder ? keder.label : '',
-    kederArticleNo: keder ? keder.articleNo : '',
-  });
-
-  return {
-    model: 'SP-B 35',
-    widthMm,
-    heightMm,
-    xMm,
-    position,
-    useFederhaken,
-    finishedWidthMm,
-    finishedHeightMm,
-    finishedSizeLabel: formatSizeMm(finishedWidthMm, finishedHeightMm),
-    brushPosition,
-    brushLengthMm,
-    stabilizationMode,
-    kederLabel: keder ? keder.label : '',
-    kederArticleNo: keder ? keder.articleNo : '',
-    needsStabilization,
-    autoNeedsStabilization,
-    needsMiddleLatch,
-    gripPosition,
-    hookArticleNo: hookEntry ? normalize(hookEntry.hookLongArticleNo) : '',
-    stabilizationCutMm,
-    stabilizationCenterFromInnerEdgeMm,
-    consumption,
-    warning,
-    productionLines,
-  };
+function safeRichText(s, max) {
+  return richText(truncateTo(s, max || 0));
 }
 
 function enrichPayloadWithSpB35(payload) {
@@ -346,10 +157,14 @@ function buildInsectSummary(details) {
     if (color) attrs.push(`Farbe: ${color}`);
     if (mesh) attrs.push(`Gaze: ${mesh}`);
     if (pos) attrs.push(pos);
+    if (spb35 && spb35.stabilizationLayout) attrs.push(stabilization.header(spb35.stabilizationLayout));
+    if (spb35 && spb35.stabilizationLayout && dims) attrs.push(`Aufmaß: ${dims}`);
+    if (spb35 && Number.isFinite(spb35.stabilizationHeightMm)) attrs.push(`Stabi-Höhe: ${spb35.stabilizationHeightMm} mm von unten (Profilmitte)`);
     if (spb35 && spb35.useFederhaken) attrs.push('Federstifte');
     else if (haken) attrs.push(`Hakenmaß X: ${haken} mm`);
+    if (!(spb35 && spb35.useFederhaken) && ['Kurz', 'Lang'].includes(d.spannHakenVariant)) attrs.push(`Haken: ${d.spannHakenVariant}`);
     if (dims && spb35 && spb35.finishedSizeLabel && dims !== spb35.finishedSizeLabel) {
-      notes.push(`Fertigmaß: ${dims}`);
+      notes.push(`Fertigmaß: ${spb35.finishedSizeLabel}`);
     }
     const n = normalize(d.spannNotes);
     if (spb35 && Array.isArray(spb35.productionLines)) notes.push(...spb35.productionLines);
@@ -373,6 +188,11 @@ function buildInsectSummary(details) {
       const n = normalize(d.rolloNotes);
       if (n) notes.push(n);
     } else if (sub === 'Tür') {
+      const layout = stabilization.fromDetails(d);
+      if (layout) {
+        attrs.push(stabilization.header(layout));
+        notes.push(...stabilization.productionLines(layout, false));
+      }
       const kind = normalize(d.doorKind);
       const kick = normalize(d.doorKickplate);
       const pet = normalize(d.doorPetFlap);
@@ -698,8 +518,8 @@ const VORSATZ_STRAP_SIZE_LABEL = {
 const VORSATZ_EXIT_LABEL = { hinten: 'Hinten', unten: 'Unten', oben: 'Oben', seite: 'Seite' };
 const VORSATZ_SIDE_LABEL = { links: 'Links', rechts: 'Rechts' };
 const VORSATZ_ROLLSIDE_LABEL = {
-  links: 'Linksroller (Ansicht von innen)',
-  rechts: 'Rechtsroller (Ansicht von innen)'
+  links: 'Linksroller',
+  rechts: 'Rechtsroller'
 };
 const VORSATZ_PROFILE_MAX_HEIGHT = {
   mini_37: {
@@ -754,11 +574,11 @@ function buildVorsatzControlLine(details, prefix) {
   if (rollSide) parts.push(rollSide);
   if (control === 'motor') {
     parts.push('Motor');
-    if (operatingSide) parts.push('Bedienseite: ' + operatingSide);
-    if (motorExit) parts.push('Kabelaustritt: ' + motorExit);
+    if (operatingSide) parts.push('Bedienseite (von außen betrachtet): ' + operatingSide);
+    if (motorExit) parts.push('Kabelaustritt (von außen betrachtet): ' + motorExit);
   } else {
     parts.push(strapSize ? (VORSATZ_CONTROL.strap + ' ' + strapSize) : VORSATZ_CONTROL.strap);
-    if (operatingSide) parts.push('Bedienseite: ' + operatingSide);
+    if (operatingSide) parts.push('Bedienseite (von außen betrachtet): ' + operatingSide);
     if (strapExit) parts.push('Gurtaustritt: ' + strapExit);
   }
   return parts;
@@ -1180,7 +1000,8 @@ router.post('/order', async (req, res, next) => {
     if (ref) titleBits.push(ref);
     if (name) titleBits.push(name);
     if (street) titleBits.push(street);
-    const title = titleBits.filter(Boolean).join(' – ') || `Montage ${formatDateDe(montageIso)}`;
+    const titleRaw = titleBits.filter(Boolean).join(' – ') || `Montage ${formatDateDe(montageIso)}`;
+    const title = truncateTo(titleRaw, 240);
 
     const orderText = buildPositionsText(payload);
     const infoText = buildInfoText(payload);
@@ -1193,9 +1014,9 @@ router.post('/order', async (req, res, next) => {
     }
 
     const cells = [];
-    if (titleCol) cells.push({ column_id: titleCol.id, rich_text: richText(title) });
-    if (positionsCol) cells.push({ column_id: positionsCol.id, rich_text: richText(orderText) });
-    if (infoCol && infoText) cells.push({ column_id: infoCol.id, rich_text: richText(infoText) });
+    if (titleCol) cells.push({ column_id: titleCol.id, rich_text: safeRichText(title, 240) });
+    if (positionsCol) cells.push({ column_id: positionsCol.id, rich_text: safeRichText(orderText, 3000) });
+    if (infoCol && infoText) cells.push({ column_id: infoCol.id, rich_text: safeRichText(infoText, 2000) });
     if (montageCol) cells.push({ column_id: montageCol.id, date: [montageIso] });
     if (dueCol && dueIso) cells.push({ column_id: dueCol.id, date: [dueIso] });
     if (statusCol && statusValue) cells.push({ column_id: statusCol.id, select: [statusValue] });
@@ -1204,11 +1025,34 @@ router.post('/order', async (req, res, next) => {
     try {
       createdItem = await createItem({ listId, initial_fields: cells });
     } catch (err) {
-      return res.status(502).json({
-        ok: false,
-        error: err?.details?.error || err.message || 'slack_list_create_failed',
-        details: err?.details || null,
-      });
+      const safeCells = [];
+      if (titleCol) safeCells.push({ column_id: titleCol.id, rich_text: safeRichText(title, 240) });
+      if (positionsCol) safeCells.push({ column_id: positionsCol.id, rich_text: safeRichText(orderText, 2000) });
+      if (montageCol) safeCells.push({ column_id: montageCol.id, date: [montageIso] });
+      if (dueCol && dueIso) safeCells.push({ column_id: dueCol.id, date: [dueIso] });
+      if (statusCol && statusValue) safeCells.push({ column_id: statusCol.id, select: [statusValue] });
+      let fallback = null;
+      try {
+        fallback = await createItem({ listId, initial_fields: safeCells });
+      } catch (_) {}
+      const fallbackUsed = !!fallback;
+      const bestError = fallback
+        ? (fallback?.details?.error || fallback?.message || 'slack_list_create_failed')
+        : (err?.details?.error || err?.message || 'slack_list_create_failed');
+      if (!fallbackUsed) {
+        return res.status(502).json({
+          ok: false,
+          error: bestError,
+          debug: {
+            titleLen: title.length,
+            orderLen: orderText.length,
+            infoLen: (infoText || '').length,
+            cells: cells.map(c => ({ col: c.column_id, keys: Object.keys(c || {}).filter(k => k !== 'column_id') })),
+          },
+          details: err?.details || null,
+        });
+      }
+      createdItem = fallback;
     }
 
     const channel =
@@ -1389,7 +1233,7 @@ router.post('/question', async (req, res, next) => {
     if (name) titleBits.push(name);
     if (street) titleBits.push(street);
     const subject = titleBits.filter(Boolean).join(' – ');
-    const title = `OF: ${assignee}` + (subject ? (' – ' + subject) : '');
+    const title = truncateTo(`OF: ${assignee}` + (subject ? (' – ' + subject) : ''), 240);
 
     const lines = [];
     lines.push(`Offene Frage an: ${assignee}`);
@@ -1414,8 +1258,8 @@ router.post('/question', async (req, res, next) => {
     }
 
     const cells = [];
-    if (titleCol) cells.push({ column_id: titleCol.id, rich_text: richText(title) });
-    if (orderCol) cells.push({ column_id: orderCol.id, rich_text: richText(text) });
+    if (titleCol) cells.push({ column_id: titleCol.id, rich_text: safeRichText(title, 240) });
+    if (orderCol) cells.push({ column_id: orderCol.id, rich_text: safeRichText(text, 2500) });
     if (dueCol && dueIso) cells.push({ column_id: dueCol.id, date: [dueIso] });
     if (statusCol && statusValue) cells.push({ column_id: statusCol.id, select: [statusValue] });
 
@@ -1423,11 +1267,28 @@ router.post('/question', async (req, res, next) => {
     try {
       createdItem = await createItem({ listId, initial_fields: cells });
     } catch (err) {
-      return res.status(502).json({
-        ok: false,
-        error: err?.details?.error || err.message || 'slack_list_create_failed',
-        details: err?.details || null,
-      });
+      const safeCells = [];
+      if (titleCol) safeCells.push({ column_id: titleCol.id, rich_text: safeRichText(title, 240) });
+      if (orderCol) safeCells.push({ column_id: orderCol.id, rich_text: safeRichText(text, 1500) });
+      if (dueCol && dueIso) safeCells.push({ column_id: dueCol.id, date: [dueIso] });
+      if (statusCol && statusValue) safeCells.push({ column_id: statusCol.id, select: [statusValue] });
+      let fallback = null;
+      try {
+        fallback = await createItem({ listId, initial_fields: safeCells });
+      } catch (_) {}
+      if (!fallback) {
+        return res.status(502).json({
+          ok: false,
+          error: err?.details?.error || err.message || 'slack_list_create_failed',
+          debug: {
+            titleLen: title.length,
+            textLen: text.length,
+            cells: cells.map(c => ({ col: c.column_id, keys: Object.keys(c || {}).filter(k => k !== 'column_id') })),
+          },
+          details: err?.details || null,
+        });
+      }
+      createdItem = fallback;
     }
 
     res.json({ ok: true, itemId: createdItem?.item?.id || createdItem?.id || '' });

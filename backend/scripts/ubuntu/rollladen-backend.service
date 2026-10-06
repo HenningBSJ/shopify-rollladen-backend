@@ -1,0 +1,29 @@
+[Unit]
+Description=Rollladen Monitor Backend (Node.js Express)
+After=network.target cloudflared.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=rollladen
+Group=rollladen
+WorkingDirectory=/srv/rollladen-monitor/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/rollladen-monitor.env
+ExecStart=/usr/bin/node /srv/rollladen-monitor/backend/src/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=15
+KillSignal=SIGTERM
+RestartPreventExitStatus=0
+StandardOutput=journal+console
+StandardError=journal+console
+SyslogIdentifier=rollladen-backend
+ProtectSystem=strict
+PrivateTmp=yes
+NoNewPrivileges=yes
+ReadWritePaths=/srv/rollladen-monitor /tmp /var/tmp /var/log/rollladen /var/lib/rollladen
+
+[Install]
+WantedBy=multi-user.target

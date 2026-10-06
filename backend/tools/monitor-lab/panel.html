@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor · Statustest</title><style>
+body{font:16px system-ui,sans-serif;margin:24px auto;padding:0 20px;max-width:1100px;color:#20242b;background:#f5f6f8}
+section{background:white;padding:20px;margin:18px 0;border:1px solid #d5d9df;border-radius:10px}
+label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;padding:8px;max-width:100%;box-sizing:border-box}
+button{cursor:pointer}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #ddd;padding:10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:12px}#message{white-space:pre-wrap;color:#9b2727}
+.hint{color:#505763}textarea{width:100%;min-height:140px}h1{margin-bottom:6px}
+</style></head><body>
+<h1>Produktions- und Materialstatus · Test</h1>
+<p class="hint">Eigene Testhistorie. Slack-Ausgangsstände sind datiert. Kalenderänderungen sind deaktiviert.</p>
+<p><a href="/display">Produktionsmonitor</a> · <button id="refresh">Ansicht aktualisieren</button></p>
+<p id="message" role="status"></p>
+<section><h2>Aufträge</h2><table><thead><tr><th>Auftrag</th><th>Produktion aus Slack</th><th>Material</th><th>Ausgangsstand</th></tr></thead><tbody id="orders"></tbody></table>
+<p class="hint">Kein Eintrag? Zuerst den lesenden Slack-Import ausführen oder einen Testauftrag anlegen.</p>
+<label>Auftrags-ID <input id="orderId" placeholder="z. B. LAB-DEMO"></label><button id="load">Auftrag öffnen</button>
+</section>
+<section><h2>Testperson anmelden</h2><p class="hint">Für lokale Bestätigungen und Scans. Keine Übertragung an Slack.</p>
+<label>Kennung <input id="user" value="LAB" autocomplete="username"></label>
+<label>Passwort <input id="password" type="password" autocomplete="current-password"></label><button id="login">Anmelden</button><span id="signedIn"></span>
+</section>
+<section><h2>Vollständiger Teilebedarf</h2><p>Testeingabe als JSON: stabile ID, Bezeichnung, Bezugsart <code>production</code> oder <code>delivery</code> und Sollmenge.</p>
+<textarea id="parts" aria-label="Teilebedarf">[{"id":"rahmen-1","label":"Rahmen","source":"production","required":1},{"id":"motor-1","label":"Motor","source":"delivery","required":1}]</textarea>
+<button id="requirements">Vollständigen Bedarf bestätigen</button><p class="hint">Eine neue Bedarfsrevision verlangt neue Mengenbestätigungen für alle Positionen.</p>
+<h3>Menge bestätigen</h3><label>Position <select id="part"></select></label><label>Insgesamt bestätigte Menge <input id="quantity" type="number" min="0" step="any" value="1"></label>
+<button id="confirm">Menge bestätigen</button>
+<h3>Scan erfassen</h3><label>Station <input id="station" value="LAB"></label>
+<label>Aktion <select id="action"><option value="done">Fertig</option><option value="reopen">Wieder geöffnet</option><option value="courier">Kurier</option></select></label>
+<button id="scan">Testscan speichern</button><p class="hint">Lokale Scans ändern den maßgeblichen Slack-Produktionsstatus noch nicht.</p>
+<h3>Korrektur</h3><label>Ereignis-ID <input id="target"></label><label>Grund <input id="reason"></label><button id="correct">Ereignis als korrigiert markieren</button>
+</section>
+<section><h2>Kalendervorschau</h2><p>Nur für jonat.bsjalousienprofi@gmail.com. Diese Eingabe sendet nichts an Google.</p>
+<label>Testtermin-ID <input id="eventId" value="lab-event"></label><label>Bestehender Titel <input id="title" value="Testkunde – Montage"></label>
+<label>Bestehende Kundenfarbe <input id="color" value="6"></label><button id="preview">Titeländerung anzeigen</button><pre id="previewOut"></pre></section>
+<section><h2>Status und unveränderter Ereignisverlauf</h2><pre id="details">Auftrag auswählen.</pre></section>
+<script>
+const $=id=>document.getElementById(id);let token='',state=null,dirty=false,pending=null;
+async function api(url,body){const r=await fetch(url,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d;}
+function run(fn){return async()=>{try{$('message').textContent='';await fn();}catch(e){$('message').textContent=e.message;}};}
+function order(){const id=$('orderId').value.trim();if(!id)throw Error('Auftrags-ID fehlt');return encodeURIComponent(id);}
+async function refresh(){const d=await api('/lab/api/orders');$('orders').replaceChildren();for(const row of d.orders){const tr=document.createElement('tr');const td=document.createElement('td');const b=document.createElement('button');b.textContent=row.title;b.onclick=run(async()=>{$('orderId').value=row.orderId;await load();});td.append(b);tr.append(td);for(const value of [row.production.status,row.material.ready?'Material bereit':'Material offen',row.slackObservedAt||'Kein Slack-Ausgangsstand']){const cell=document.createElement('td');cell.textContent=value;tr.append(cell);}$('orders').append(tr);}}
+async function load(){const d=await api('/lab/api/orders/'+order());state=d.state;$('details').textContent=JSON.stringify(d,null,2);$('part').replaceChildren();for(const p of state.parts){const o=document.createElement('option');o.value=p.id;o.textContent=p.label+' ('+p.source+')';$('part').append(o);}}
+async function save(type,payload){if(!token)throw Error('Bitte Testperson anmelden');if(!state||state.orderId!==$('orderId').value.trim())throw Error('Zuerst diesen Auftrag öffnen');
+const key=JSON.stringify({orderId:state.orderId,type,payload});if(!pending||pending.key!==key)pending={key,id:crypto.randomUUID()};
+await api('/lab/api/orders/'+order()+'/events',{id:pending.id,type,payload});pending=null;dirty=false;await load();await refresh();$('message').textContent='In der Testhistorie gespeichert.';}
+$('refresh').onclick=run(refresh);$('load').onclick=run(load);
+$('login').onclick=run(async()=>{const d=await api('/api/monitor-auth/login',{login:$('user').value,password:$('password').value});token=d.token;$('password').value='';$('signedIn').textContent=' Angemeldet';});
+$('requirements').onclick=run(()=>save('requirements',{previousRevision:state?.revision||null,parts:JSON.parse($('parts').value)}));
+$('confirm').onclick=run(()=>save('confirmation',{revision:state?.revision,partId:$('part').value,quantity:Number($('quantity').value)}));
+$('scan').onclick=run(()=>save('scan',{revision:state?.revision,partId:$('part').value,action:$('action').value,station:$('station').value}));
+$('correct').onclick=run(()=>save('correction',{targetId:$('target').value,reason:$('reason').value}));
+$('preview').onclick=run(async()=>{$('previewOut').textContent=JSON.stringify(await api('/lab/api/orders/'+order()+'/preview',{calendarId:'jonat.bsjalousienprofi@gmail.com',event:{id:$('eventId').value,summary:$('title').value,colorId:$('color').value}}),null,2);});
+document.addEventListener('input',()=>{dirty=true;});window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});run(refresh)();
+</script></body></html>

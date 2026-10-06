@@ -3,6 +3,7 @@ const { monitorHttpAuthMiddleware } = require('../middleware');
 
 const router = express.Router();
 router.use(monitorHttpAuthMiddleware);
+router.get('/stabilization.js', (req, res) => res.sendFile(require.resolve('../stabilization')));
 
 function pageHtml() {
   return `<!doctype html>
@@ -19,16 +20,22 @@ function pageHtml() {
       .topbar a { color: #0a5bd3; text-decoration: none; }
       h1 { font-size: 20px; margin: 0; }
       .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 10px; padding: 10px; box-shadow: 0 1px 0 rgba(0,0,0,0.03); }
-      .grid { display: grid; gap: 4px; }
+      .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
+      .grid > * { min-width: 0; }
+      .customer-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr); }
+      @media (max-width: 650px) {
+        .customer-grid { grid-template-columns: minmax(0, 1fr); }
+        .customer-grid > .customer-calendar { grid-row: auto !important; }
+      }
       @media (min-width: 820px) {
-        .grid-2 { grid-template-columns: 1fr 1fr; }
-        .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       }
       @media (min-width: 1100px) {
-        .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+        .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       }
       label { display: grid; gap: 0px; font-size: 12px; font-weight: 800; line-height: 1.05; }
-      input, select, textarea, button { font: inherit; }
+      input, select, textarea, button { font: inherit; max-width: 100%; box-sizing: border-box; }
       input, select, textarea { padding: 4px 8px; border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; font-weight: 400; font-size: 14px; line-height: 1.2; }
       input:disabled, select:disabled, textarea:disabled { background: #f4f4f5; color: #71717a; cursor: not-allowed; }
       textarea { resize: vertical; min-height: 56px; }
@@ -51,6 +58,22 @@ function pageHtml() {
       .btn:disabled { opacity: .6; cursor: not-allowed; }
       .actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
       .hidden { display: none !important; }
+      .stabi-planner { border-top: 1px solid #d4d4d8; padding-top: 10px; margin-top: 6px; min-width: 0; }
+      .stabi-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 8px 0; }
+      .stabi-toolbar label { gap: 4px; }
+      .stabi-toolbar input { width: 64px; }
+      .stabi-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 1fr); gap: 16px; }
+      .stabi-sketch { min-width: 0; background: #fff; border: 1px solid #e4e4e7; border-radius: 4px; }
+      .stabi-sketch svg { display: block; width: 100%; height: 340px; }
+      .stabi-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #e4e4e7; }
+      .stabi-row label { gap: 4px; line-height: 1.3; }
+      .stabi-row input { min-width: 0; width: 100%; box-sizing: border-box; }
+      .stabi-row input[aria-invalid="true"] { border-color: #b91c1c; background: #fff7f7; }
+      .stabi-errors { color: #b91c1c; font-size: 13px; line-height: 1.5; margin-top: 8px; }
+      .stabi-gaps { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0; font-size: 12px; }
+      .stabi-gaps .valid { color: #166534; }
+      .stabi-gaps .invalid { color: #b91c1c; font-weight: 700; }
+      @media (max-width: 650px) { .stabi-workspace { grid-template-columns: minmax(0, 1fr); } .stabi-sketch svg { height: 300px; } }
       .status { margin-top: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid #e4e4e7; background: #fff; }
       .status.ok { border-color: #bbf7d0; background: #f0fdf4; }
       .status.err { border-color: #fecaca; background: #fef2f2; }
@@ -66,6 +89,7 @@ function pageHtml() {
       .cal-day.sel { background: #111; border-color: #111; color: #fff; }
       .pill { border: 1px solid #e4e4e7; border-radius: 10px; padding: 8px; background: #fcfcfd; font-size: 12px; }
       .emergency-box { position: sticky; top: 8px; z-index: 4; border: 2px solid #fb923c; border-radius: 12px; background: linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%); padding: 12px 14px; display: grid; gap: 8px; box-shadow: 0 8px 20px rgba(251, 146, 60, 0.10); }
+      .emergency-box:not(.active) { position: static; }
       .emergency-box.active { border-color: #dc2626; background: linear-gradient(180deg, #fef2f2 0%, #fff1f2 100%); box-shadow: 0 10px 24px rgba(220, 38, 38, 0.16); }
       .emergency-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
       .emergency-title { font-size: 18px; font-weight: 900; letter-spacing: .03em; color: #9a3412; text-transform: uppercase; }
@@ -129,7 +153,7 @@ function pageHtml() {
               <div class="grid" style="grid-template-columns: 1fr; gap:4px;">
                 <div style="display:grid; gap:4px;">
                   <div class="grid" style="grid-template-columns: 1fr; gap:4px;">
-                    <div class="grid" style="grid-template-columns: 1fr 1fr 1.1fr; gap:4px;">
+                    <div class="grid customer-grid" style="gap:4px;">
                       <label>
                         Firma
                         <input id="company" list="company-list" autocomplete="organization" placeholder="z.B. Muster GmbH" />
@@ -140,7 +164,7 @@ function pageHtml() {
                         <input id="orderRef" placeholder="z.B. AB-123 / Baustelle ..." />
                       </label>
 
-                      <div style="grid-row: 1 / span 2;">
+                      <div class="customer-calendar" style="grid-row: 1 / span 2;">
                         <div class="row" style="justify-content:space-between; align-items:center; gap:8px;">
                           <div class="muted" id="calendarLabel">Montagetermin</div>
                           <button class="btn hidden" id="clearDateBtn" type="button">Kein Datum</button>
@@ -277,6 +301,7 @@ function pageHtml() {
               <option value="Erfal">Erfal</option>
               <option value="Hella">Hella</option>
               <option value="May">May</option>
+              <option value="Musculus">Musculus</option>
               <option value="Viktor Müller">Viktor Müller</option>
               <option value="Sonstige">Sonstige</option>
             </select>
@@ -296,8 +321,8 @@ function pageHtml() {
             <label>
               Farbe
               <select data-field="insectColor">
-                <option value="" selected>—</option>
-                <option value="Weiß">Weiß</option>
+                <option value="">—</option>
+                <option value="Weiß" selected>Weiß</option>
                 <option value="Silber">Silber</option>
                 <option value="Anthrazit">Anthrazit</option>
                 <option value="Grau">Grau</option>
@@ -308,14 +333,11 @@ function pageHtml() {
             <label>
               Gaze-Art
               <select data-field="insectMesh">
-                <option value="" selected>—</option>
-                <option value="Standard">Standard</option>
-                <option value="Durchblick">Durchblick</option>
+                <option value="">—</option>
+                <option value="Standard" selected>Standard</option>
                 <option value="Pollenschutz">Pollenschutz</option>
                 <option value="Reißfest">Reißfest</option>
                 <option value="Edelstahl">Edelstahl</option>
-                <option value="Petscreen">Petscreen</option>
-                <option value="Sonstige">Sonstige</option>
               </select>
             </label>
           </div>
@@ -323,21 +345,20 @@ function pageHtml() {
         </div>
 
         <div data-block="insectSpannrahmen" class="grid hidden" style="margin-top:10px;">
-          <div class="grid grid-3">
+          <div class="grid grid-4">
             <label>
               Lage
               <select data-field="spannPosition">
-                <option value="" selected>—</option>
+                <option value="">—</option>
                 <option value="innenliegend">innenliegend</option>
-                <option value="außenliegend">außenliegend</option>
+                <option value="außenliegend" selected>außenliegend</option>
               </select>
             </label>
             <label>
               Federstifte
               <select data-field="spannFederstifte">
-                <option value="" selected>—</option>
                 <option value="Ja">Ja</option>
-                <option value="Nein">Nein</option>
+                <option value="Nein" selected>Nein</option>
               </select>
             </label>
             <label>
@@ -369,13 +390,38 @@ function pageHtml() {
                 <option value="40">40</option>
               </select>
             </label>
+            <label>
+              Hakentyp (optional)
+              <select data-field="spannHakenVariant">
+                <option value="" selected>—</option>
+                <option value="Kurz">Kurz</option>
+                <option value="Lang">Lang</option>
+              </select>
+            </label>
           </div>
+          <div class="muted" data-block="spannHookGrooveHint">Haken-Nut: wird aus der Lage bestimmt.</div>
+          <div data-block="stabiAnchor"></div>
+          <section data-block="stabiPlanner" class="stabi-planner hidden" aria-label="Stabilisierungsprofile">
+            <strong>Stabilisierungsprofile</strong>
+            <div class="stabi-toolbar">
+              <label>Ausrichtung<select data-field="stabiOrientation"><option value="horizontal">Horizontal</option><option value="vertical">Vertikal</option></select></label>
+              <label>Anzahl<input data-field="stabiCount" type="number" min="0" max="10" step="1" value="0" /></label>
+              <button type="button" class="btn" data-action="stabiAuto" title="Mindestanzahl berechnen und alle Stabis gleichmäßig verteilen">Automatisch berechnen</button>
+            </div>
+            <div class="muted" data-block="stabiMeasurements"></div>
+            <div class="stabi-workspace">
+              <div class="stabi-sketch" data-block="stabiSketch"></div>
+              <div><div data-block="stabiRows"></div><div class="stabi-gaps" data-block="stabiGaps"></div></div>
+            </div>
+            <div class="muted">Rahmenprofil 35 mm · Stabiprofil 34,2 mm · Freie Abstände 450–1250 mm</div>
+            <div class="stabi-errors" data-block="stabiErrors" role="status" aria-live="polite"></div>
+          </section>
           <div class="grid grid-2">
             <label>
               Lage der Bürste
               <select data-field="spannBrushPosition">
                 <option value="zum Fenster" selected>zum Fenster</option>
-                <option value="Abdichtung nach unten">Abdichtung nach unten</option>
+                <option value="außen umlaufend">außen umlaufend</option>
               </select>
             </label>
             <label>
@@ -388,14 +434,6 @@ function pageHtml() {
             </label>
           </div>
           <label>
-            Stabilisierungsprofil
-            <select data-field="spannStabilizationMode">
-              <option value="Auto" selected>Automatisch (ab 1250 mm Höhe)</option>
-              <option value="Ja">Ja, auch früher einsetzen</option>
-              <option value="Nein">Nein, nur ausnahmsweise</option>
-            </select>
-          </label>
-          <label>
             Bemerkungen (Spannrahmen)
             <textarea data-field="spannNotes" placeholder="optional"></textarea>
           </label>
@@ -406,24 +444,24 @@ function pageHtml() {
             <label>
               Kassette
               <select data-field="rolloCassette">
-                <option value="" selected>—</option>
+                <option value="">—</option>
                 <option value="rund">rund</option>
-                <option value="eckig">eckig</option>
+                <option value="eckig" selected>eckig</option>
               </select>
             </label>
             <label>
               FS-Abschluss
               <select data-field="rolloFsAbschluss">
-                <option value="" selected>—</option>
-                <option value="Ja">Ja</option>
+                <option value="">—</option>
+                <option value="Ja" selected>Ja</option>
                 <option value="Nein">Nein</option>
               </select>
             </label>
             <label>
               Griff für SL-I
               <select data-field="rolloGripSli">
-                <option value="" selected>—</option>
-                <option value="Ja">Ja</option>
+                <option value="">—</option>
+                <option value="Ja" selected>Ja</option>
                 <option value="Nein">Nein</option>
               </select>
             </label>
@@ -464,8 +502,8 @@ function pageHtml() {
             <label>
               Katzen-/Hundeklappe
               <select data-field="doorPetFlap">
-                <option value="" selected>—</option>
-                <option value="keine">keine</option>
+                <option value="">—</option>
+                <option value="keine" selected>Nein</option>
                 <option value="Katzenklappe">Katzenklappe</option>
               </select>
             </label>
@@ -535,6 +573,7 @@ function pageHtml() {
             </label>
             <label>
               Maße (mm)
+              <span data-field="panzerAreaWarning" class="hidden" role="status" style="color:#b91c1c; margin-bottom:4px;">Fläche für das gewählte Material zu groß. Bitte anpassen!</span>
               <input data-field="dimensions" placeholder="Breite × Höhe (z.B. 1000 × 1500)" title="Breite × Höhe in mm, z.B. 1000 × 1500" />
             </label>
           </div>
@@ -543,10 +582,6 @@ function pageHtml() {
             <label>
               Endleiste
               <div class="row" style="align-items:center;">
-                <label style="display:flex; gap:8px; align-items:center; font-size:12px; font-weight:700;">
-                  <input type="checkbox" data-field="endleisteEnabled" checked />
-                  Vorhanden
-                </label>
                 <label style="display:flex; gap:8px; align-items:center; font-size:12px; font-weight:700;">
                   <input type="checkbox" data-field="endleisteHoles" checked />
                   Gebohrt
@@ -563,7 +598,7 @@ function pageHtml() {
         <div data-block="vorsatzElement" class="grid hidden" style="margin-top:10px;">
           <div class="grid grid-2">
             <label>
-              Element-Maße (mm)
+              <span>Element-Maße (mm) <span data-field="vorsatzElementAreaWarning" class="hidden" role="status" style="color:#b91c1c;">Fläche für das gewählte Material zu groß. Bitte anpassen!</span></span>
               <input data-field="vorsatzElementDimensions" placeholder="Breite × Höhe (z.B. 1400 × 1700)" title="Breite × Höhe des fertigen Vorsatzelements in mm, z.B. 1400 × 1700" />
             </label>
             <label>
@@ -591,19 +626,6 @@ function pageHtml() {
               Rollseite
               <select data-field="vorsatzRollSide"></select>
             </label>
-            <label>
-              Schienen
-              <div class="row" style="align-items:center;">
-                <label style="display:flex; gap:8px; align-items:center; font-size:12px; font-weight:700;">
-                  <input type="radio" data-field="vorsatzElementRails" name="vorsatzElementRails" value="ja" />
-                  Ja
-                </label>
-                <label style="display:flex; gap:8px; align-items:center; font-size:12px; font-weight:700;">
-                  <input type="radio" data-field="vorsatzElementRails" name="vorsatzElementRails" value="nein" checked />
-                  Nein
-                </label>
-              </div>
-            </label>
           </div>
 
           <div class="grid grid-2">
@@ -612,7 +634,7 @@ function pageHtml() {
               <input data-field="vorsatzRailLengthMm" inputmode="numeric" placeholder="z.B. 1520" title="Wird automatisch berechnet: Elementhöhe − Kastengröße. Kann manuell überschrieben werden." />
             </label>
             <label>
-              Bedienung
+              Bedienung (von außen betrachtet)
               <div class="seg" aria-label="Bedienung Vorsatz MIT Panzer">
                 <input type="radio" data-field="vorsatzControl" name="vorsatzControl" value="strap" checked />
                 <label for="">Gurt / Kordel</label>
@@ -635,11 +657,11 @@ function pageHtml() {
 
           <div class="grid grid-2">
             <label>
-              Kabelaustritt (bei Motor)
+              Kabelaustritt (bei Motor, von außen betrachtet)
               <select data-field="vorsatzMotorExit"></select>
             </label>
             <label>
-              Bedienseite
+              Bedienseite (von außen betrachtet)
               <select data-field="vorsatzOperatingSide"></select>
             </label>
           </div>
@@ -674,10 +696,6 @@ function pageHtml() {
               Panzer Endleiste
               <div class="row" style="align-items:center;">
                 <label style="display:flex; gap:8px; align-items:center; font-size:12px; font-weight:700;">
-                  <input type="checkbox" data-field="vorsatzEndleisteEnabled" checked />
-                  vorhanden
-                </label>
-                <label style="display:flex; gap:8px; align-items:center; font-size:12px; font-weight:700;">
                   <input type="checkbox" data-field="vorsatzEndleisteHoles" checked />
                   gebohrt
                 </label>
@@ -694,6 +712,7 @@ function pageHtml() {
               <div class="row" style="justify-content:space-between; align-items:center; width:100%; gap:14px;">
                 <div>
                   <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Errechnete Panzer-Maße</div>
+                  <div data-field="vorsatzPanzerAreaWarning" class="hidden" role="status" style="color:#b91c1c; font-size:12px; margin-bottom:4px;">Fläche für das gewählte Material zu groß. Bitte anpassen!</div>
                   <div data-field="vorsatzPanzerDimensionsInfo" style="font-size:12px; line-height:1.35;">-</div>
                 </div>
                 <div style="text-align:right; font-size:12px; opacity:.85;">
@@ -791,6 +810,7 @@ function pageHtml() {
       </div>
     </template>
 
+    <script src="/intake/stabilization.js"></script>
     <script>
       const STORAGE = {
         companies: 'intake:companies'
@@ -928,7 +948,7 @@ function pageHtml() {
       function parseDimensions(raw) {
         const s = normalize(String(raw || '')).replace(/mm/gi, '').trim();
         if (!s) return null;
-        const m = s.match(/(\d{3,5})\s*(?:x|×|X)\s*(\d{3,5})/);
+        const m = s.match(/^(\\d{3,5})\\s*(?:x|×|X)\\s*(\\d{3,5})$/);
         if (!m) return null;
         return { width: Number(m[1]), height: Number(m[2]) };
       }
@@ -939,8 +959,8 @@ function pageHtml() {
       ];
 
       const VORSATZ_BOX_SIDE_OPTIONS = [
-        { id: 'links', label: 'Linksroller (Ansicht von innen)' },
-        { id: 'rechts', label: 'Rechtsroller (Ansicht von innen)' }
+        { id: 'links', label: 'Linksroller' },
+        { id: 'rechts', label: 'Rechtsroller' }
       ];
 
       const VORSATZ_BOX_OPERATING_SIDE = [
@@ -949,9 +969,7 @@ function pageHtml() {
       ];
 
       const VORSATZ_STRAP_SIZES = [
-        { id: 's12', label: '12 mm' },
         { id: 's14', label: '14 mm' },
-        { id: 's18', label: '18 mm' },
         { id: 's23', label: '23 mm' },
         { id: 'cord', label: 'Kordel' }
       ];
@@ -1001,7 +1019,7 @@ function pageHtml() {
           if (max == null) continue;
           if (h <= max) return s;
         }
-        return 205;
+        return null;
       }
 
       const COLOR_OPTIONS = {
@@ -1073,6 +1091,11 @@ function pageHtml() {
         { id: 'grau', label: 'Grau' }
       ];
 
+      const PANZER_ENDLEISTE_COLORS = [
+        ...ENDLEISTE_COLORS,
+        { id: 'in_panzerfarbe', label: 'in Panzerfarbe' }
+      ];
+
       const VORSATZ_COLORS = [
         { id: 'grau', label: 'Grau' },
         { id: 'weiss', label: 'Weiß' },
@@ -1139,7 +1162,22 @@ function pageHtml() {
         return COLOR_OPTIONS[key] || [];
       }
 
+      const PANZER_AREA_LIMITS = { pvc_mini: 3, pvc_midi: 3.5, pvc_maxi: 4.3, alu_mini: 7, alu_midi: 7.5, alu_maxi: 8 };
+
+      function updatePanzerAreaWarning(itemEl) {
+        const material = getSelectedRadioValue(itemEl, 'material') || 'alu';
+        const profile = getSelectedRadioValue(itemEl, 'profileCode') || 'mini';
+        const limit = PANZER_AREA_LIMITS[material + '_' + profile];
+        const raw = itemEl.querySelector('[data-field="dimensions"]').value;
+        const dimensions = String(raw || '').replace(/mm/gi, '').trim().match(/^(\\d+(?:[.,]\\d+)?)\\s*[x×]\\s*(\\d+(?:[.,]\\d+)?)$/i);
+        const area = dimensions
+          ? Number(dimensions[1].replace(',', '.')) * Number(dimensions[2].replace(',', '.')) / 1000000
+          : 0;
+        itemEl.querySelector('[data-field="panzerAreaWarning"]').classList.toggle('hidden', !(limit && area > limit));
+      }
+
       function applyPanzerLogic(itemEl) {
+        updatePanzerAreaWarning(itemEl);
         const material = getSelectedRadioValue(itemEl, 'material') || 'alu';
         const profileCode = getSelectedRadioValue(itemEl, 'profileCode') || 'mini';
         const colorSelect = itemEl.querySelector('[data-field="colorId"]');
@@ -1153,15 +1191,10 @@ function pageHtml() {
         }
 
         const endColorSelect = itemEl.querySelector('[data-field="endleisteColorId"]');
-        const endleisteEnabledEl = itemEl.querySelector('[data-field="endleisteEnabled"]');
-        const endleisteHolesEl = itemEl.querySelector('[data-field="endleisteHoles"]');
         const wantedEndColor = normalize(endColorSelect.dataset.wanted || '') || normalize(endColorSelect.value) || 'silber_eloxiert';
-        fillSelect(endColorSelect, ENDLEISTE_COLORS, wantedEndColor);
+        fillSelect(endColorSelect, PANZER_ENDLEISTE_COLORS, wantedEndColor);
         if (normalize(endColorSelect.dataset.wanted)) delete endColorSelect.dataset.wanted;
         if (!normalize(endColorSelect.value)) endColorSelect.value = 'silber_eloxiert';
-        const endleisteEnabled = !endleisteEnabledEl || !!endleisteEnabledEl.checked;
-        if (endColorSelect) endColorSelect.disabled = !endleisteEnabled;
-        if (endleisteHolesEl) endleisteHolesEl.disabled = !endleisteEnabled;
       }
 
       function applyVorsatzLogic(itemEl) {
@@ -1193,11 +1226,8 @@ function pageHtml() {
         const panzerProfileSelect = itemEl.querySelector('[data-field="vorsatzPanzerProfileId"]');
         const panzerColorSelect = itemEl.querySelector('[data-field="vorsatzPanzerColorId"]');
         const panzerEndColorSelect = itemEl.querySelector('[data-field="vorsatzEndleisteColorId"]');
-        const panzerEndEnabledEl = itemEl.querySelector('[data-field="vorsatzEndleisteEnabled"]');
-        const panzerEndHolesEl = itemEl.querySelector('[data-field="vorsatzEndleisteHoles"]');
         const dimsInfo = itemEl.querySelector('[data-field="vorsatzPanzerDimensionsInfo"]');
         const boxHint = itemEl.querySelector('[data-field="vorsatzBoxHint"]');
-        const railsYesEl = itemEl.querySelector('[data-field="vorsatzElementRails"][value="ja"]');
         const railLengthInput = itemEl.querySelector('[data-field="vorsatzRailLengthMm"]');
         const rollSideSelect = itemEl.querySelector('[data-field="vorsatzRollSide"]');
         const controlEls = itemEl.querySelectorAll('[data-field="vorsatzControl"]');
@@ -1283,51 +1313,38 @@ function pageHtml() {
           elementHeightMm: dims ? dims.height : null
         });
         const boxOptions = VORSATZ_BOX_SIZES.slice().map(bs => {
-          if (!table) return { id: String(bs), label: bs + 'er', disabled: false };
+          if (!table) return { id: String(bs), label: bs + 'er (n.a.)', disabled: true };
           const maxH = table[bs];
           if (maxH == null) return { id: String(bs), label: bs + 'er (n.a.)', disabled: true };
           if (dims && dims.height > maxH) return { id: String(bs), label: bs + 'er (bis ' + maxH + ' mm)', disabled: true };
-          return { id: String(bs), label: bs + 'er (bis ' + maxH + ' mm)', disabled: false };
+          return { id: String(bs), label: bs + 'er (bis ' + maxH + ' mm)', disabled: !dims };
         });
-        const defaultBox = String(currentBoxSize || suggestedBox || VORSATZ_BOX_SIZES[3]);
         const validBoxOptions = boxOptions.filter(o => !o.disabled);
-        const forcedDefault = validBoxOptions.some(o => o.id === defaultBox)
-          ? defaultBox
-          : (validBoxOptions[validBoxOptions.length - 1] ? validBoxOptions[validBoxOptions.length - 1].id : defaultBox);
-        fillSelect(
-          boxSizeSelect,
-          boxOptions,
-          String(currentBoxSize || forcedDefault)
-        );
-        if (!opts.keepBoxSize && suggestedBox && currentBoxSize !== suggestedBox) {
-          boxSizeSelect.value = String(suggestedBox);
+        const criteria = JSON.stringify([dims, profileId, shaftId]);
+        const keepSelection = opts.keepBoxSize && boxSizeSelect.dataset.criteria === criteria
+          && validBoxOptions.some(o => Number(o.id) === currentBoxSize);
+        const selectedBox = keepSelection ? String(currentBoxSize) : (suggestedBox ? String(suggestedBox) : '');
+        if (!validBoxOptions.length) {
+          boxOptions.unshift({ id: '', label: dims ? 'Keine passende Kastengröße' : 'Bitte Maße eingeben', disabled: true });
         }
-        const chosenBox = Number(boxSizeSelect.value) || 0;
-        const boxEntry = boxOptions.find(o => Number(o.id) === chosenBox);
-        if (boxEntry && boxEntry.disabled) {
-          const fallback = validBoxOptions[validBoxOptions.length - 1] || boxOptions[boxOptions.length - 1];
-          boxSizeSelect.value = fallback.id;
-        }
-
-        const endEnabled = panzerEndEnabledEl ? !!panzerEndEnabledEl.checked : true;
+        fillSelect(boxSizeSelect, boxOptions, selectedBox);
+        boxSizeSelect.value = selectedBox;
+        boxSizeSelect.dataset.criteria = criteria;
         panzerProfileSelect.disabled = false;
         panzerColorSelect.disabled = false;
-        if (panzerEndColorSelect) panzerEndColorSelect.disabled = !endEnabled;
-        if (panzerEndEnabledEl) panzerEndEnabledEl.disabled = false;
-        if (panzerEndHolesEl) panzerEndHolesEl.disabled = !endEnabled;
 
-        const railYes = !!(railsYesEl && railsYesEl.checked);
         if (railLengthInput) {
-          if (railYes && dims && boxSizeSelect.value) {
+          if (dims && boxSizeSelect.value) {
             const expected = Math.max(0, Math.round(dims.height - Number(boxSizeSelect.value)));
             const current = normalize(railLengthInput.dataset.wanted || railLengthInput.value);
-            if (!current) railLengthInput.value = String(expected);
+            if (!current || current === railLengthInput.dataset.autoValue) railLengthInput.value = String(expected);
+            railLengthInput.dataset.autoValue = String(expected);
             if (railLengthInput.dataset.wanted) delete railLengthInput.dataset.wanted;
           } else if (railLengthInput.dataset.wanted) {
             railLengthInput.value = railLengthInput.dataset.wanted;
             delete railLengthInput.dataset.wanted;
           }
-          railLengthInput.disabled = !railYes;
+          railLengthInput.disabled = false;
         }
 
         const isStrap = control === 'strap';
@@ -1341,6 +1358,13 @@ function pageHtml() {
           panzerDims.width = Math.max(0, dims.width - 65);
           panzerDims.height = Math.max(0, Math.round(dims.height - (boxSize / 2)));
         }
+        const panzerArea = dims && boxSize ? panzerDims.width * panzerDims.height / 1000000 : null;
+        const panzerMaterial = getSelectedRadioValue(itemEl, 'vorsatzPanzerMaterial') || 'alu';
+        const areaProfile = { mini_37: 'mini', midi_45: 'midi', maxi_52: 'maxi' }[profileId];
+        const areaLimit = PANZER_AREA_LIMITS[panzerMaterial + '_' + areaProfile];
+        ['vorsatzPanzerAreaWarning', 'vorsatzElementAreaWarning'].forEach(field => {
+          itemEl.querySelector('[data-field="' + field + '"]').classList.toggle('hidden', !(areaLimit && panzerArea !== null && panzerArea > areaLimit));
+        });
         if (dimsInfo) {
           if (!dims || !boxSize) {
             dimsInfo.textContent = 'Erst Element-Maße und Kastengröße ausfüllen.';
@@ -1351,12 +1375,15 @@ function pageHtml() {
             const eh = String(dims.height);
             const bs = String(boxSize);
             const half = String(boxSize / 2);
-            dimsInfo.textContent = (pw + ' × ' + ph + ' mm (Breite ' + ew + ' - 65; Höhe ' + eh + ' - ' + bs + '/2 = ' + half + ')');
+            const areaLabel = panzerArea.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            dimsInfo.textContent = (pw + ' × ' + ph + ' mm · ' + areaLabel + ' m² (Breite ' + ew + ' - 65; Höhe ' + eh + ' - ' + bs + '/2 = ' + half + ')');
           }
         }
         if (boxHint) {
           if (!table) {
-            boxHint.textContent = 'Diese Konstellation (Maxi + 40er Welle) ist unzulässig – auf 60er umgestellt.';
+            boxHint.textContent = 'Keine Grenzwerte für dieses Profil hinterlegt.';
+          } else if (dims && !validBoxOptions.length) {
+            boxHint.textContent = 'Keine passende Kastengröße für diese Elementhöhe.';
           } else {
             const bs = Number(boxSizeSelect.value) || 0;
             const max = table[bs];
@@ -1467,6 +1494,9 @@ function pageHtml() {
         itemEl.querySelector('[data-block="insectRollo"]').classList.toggle('hidden', !(isInsect && sub === 'Rollo'));
         itemEl.querySelector('[data-block="insectDoor"]').classList.toggle('hidden', !(isInsect && sub === 'Tür'));
         const doorKind = normalize(itemEl.querySelector('[data-field="doorKind"]')?.value);
+        const petFlap = itemEl.querySelector('[data-field="doorPetFlap"]');
+        petFlap.disabled = doorKind === 'Schiebetür';
+        if (petFlap.disabled) petFlap.value = 'keine';
         itemEl.querySelector('[data-block="insectSlidingDoor"]').classList.toggle('hidden', !(isInsect && sub === 'Tür' && doorKind === 'Schiebetür'));
 
         itemEl.querySelector('[data-block="partsVendor"]').classList.toggle('hidden', !isPartsType(t));
@@ -1485,17 +1515,28 @@ function pageHtml() {
         const positionEl = itemEl.querySelector('[data-field="spannPosition"]');
         const federEl = itemEl.querySelector('[data-field="spannFederstifte"]');
         const hakenEl = itemEl.querySelector('[data-field="spannHakenLengthMm"]');
+        const hakenVariantEl = itemEl.querySelector('[data-field="spannHakenVariant"]');
         const brushPosEl = itemEl.querySelector('[data-field="spannBrushPosition"]');
+        const hookGrooveHintEl = itemEl.querySelector('[data-block="spannHookGrooveHint"]');
         if (!positionEl || !federEl || !hakenEl) return;
 
+        if (hookGrooveHintEl) {
+          const position = normalize(positionEl.value).toLowerCase();
+          hookGrooveHintEl.textContent = position === 'innenliegend'
+            ? 'Haken-Nut: Außennut'
+            : position === 'außenliegend' || position === 'aussenliegend'
+              ? 'Haken-Nut: Mittelnut'
+              : 'Haken-Nut: wird aus der Lage bestimmt.';
+        }
+
         if (sourceField === 'spannPosition' && normalize(positionEl.value)) {
-          federEl.value = '';
+          federEl.value = 'Nein';
           const pos = normalize(positionEl.value).toLowerCase();
           if (brushPosEl) {
             if (pos === 'innenliegend') {
-              brushPosEl.value = 'zum Fenster';
+              brushPosEl.value = 'außen umlaufend';
             } else if (pos === 'außenliegend' || pos === 'aussenliegend') {
-              brushPosEl.value = 'Abdichtung nach unten';
+              brushPosEl.value = 'zum Fenster';
             }
           }
         }
@@ -1503,15 +1544,182 @@ function pageHtml() {
           hakenEl.value = '';
         }
 
-        const hasPosition = !!normalize(positionEl.value);
         const usesFederstifte = normalize(federEl.value).toLowerCase() === 'ja';
 
         positionEl.disabled = usesFederstifte;
-        federEl.disabled = hasPosition;
+        federEl.disabled = false;
+        if (brushPosEl && usesFederstifte) brushPosEl.value = 'außen umlaufend';
+        else if (brushPosEl && sourceField === 'spannFederstifte') {
+          brushPosEl.value = normalize(positionEl.value) === 'innenliegend' ? 'außen umlaufend' : 'zum Fenster';
+        }
         hakenEl.disabled = usesFederstifte;
+        hakenVariantEl.disabled = usesFederstifte;
+        if (usesFederstifte) hakenVariantEl.value = '';
         if (!usesFederstifte && !normalize(hakenEl.value)) {
           hakenEl.value = '4';
         }
+      }
+
+      function stabiDetails(itemEl) {
+        const details = {};
+        ['insectSubtype', 'insectWidthMm', 'insectHeightMm', 'spannPosition', 'spannFederstifte'].forEach(key => {
+          details[key] = itemEl.querySelector('[data-field="' + key + '"]')?.value || '';
+        });
+        return details;
+      }
+
+      function stabiNumber(value) {
+        return Number.isFinite(value) ? value.toLocaleString('de-DE', { maximumFractionDigits: 1 }) : '—';
+      }
+
+      function resizeStabiPositions(positions, count, axisMm) {
+        if (!Number.isInteger(count) || count < 0 || count > 10) return positions.slice();
+        const sorted = positions.slice().sort((a, b) => {
+          if (!Number.isFinite(a)) return Number.isFinite(b) ? 1 : 0;
+          if (!Number.isFinite(b)) return -1;
+          return a - b;
+        });
+        if (count <= sorted.length) return sorted.slice(0, count);
+        const { FRAME_MM, BRACE_MM, round1 } = window.Stabilization;
+        while (sorted.length < count) {
+          const finite = sorted.filter(Number.isFinite);
+          let previous = FRAME_MM;
+          let largest = { start: FRAME_MM, gap: -Infinity };
+          finite.concat([axisMm - FRAME_MM]).forEach((position, index) => {
+            const gap = position - previous;
+            if (gap > largest.gap) largest = { start: previous, gap };
+            if (index < finite.length) previous = position + BRACE_MM;
+          });
+          const next = Number.isFinite(largest.gap) ? round1(largest.start + (largest.gap - BRACE_MM) / 2) : NaN;
+          const index = sorted.findIndex(position => !Number.isFinite(position) || position > next);
+          sorted.splice(index < 0 ? sorted.length : index, 0, next);
+        }
+        return sorted;
+      }
+
+      function renderStabiSketch(itemEl, layout) {
+        const target = itemEl.querySelector('[data-block="stabiSketch"]');
+        target.replaceChildren();
+        if (!(layout.widthMm > 70 && layout.heightMm > 70)) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 440 340');
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', 'Rahmen mit ' + layout.count + ' Stabilisierungsprofilen; Positionsmaße von den Rahmenaußenkanten');
+        const put = (tag, attrs, text) => {
+          const el = document.createElementNS(ns, tag);
+          Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, String(value)));
+          if (text != null) el.textContent = text;
+          svg.appendChild(el);
+          return el;
+        };
+        const scale = Math.min(280 / layout.widthMm, 230 / layout.heightMm);
+        const w = layout.widthMm * scale, h = layout.heightMm * scale;
+        const x = (440 - w) / 2, y = (340 - h) / 2;
+        const f = 35 * scale, b = 34.2 * scale;
+        put('rect', { x, y, width: w, height: h, fill: '#a1a1aa' });
+        put('rect', { x: x + f, y: y + f, width: w - 2 * f, height: h - 2 * f, fill: '#f4f4f5' });
+        const vertical = layout.orientation === 'vertical';
+        const selected = itemEl._stabiSelected || { index: 0, opposite: false };
+        layout.positions.forEach((position, index) => {
+          if (!Number.isFinite(position)) return;
+          const bx = vertical ? x + position * scale : x + f;
+          const by = vertical ? y + f : y + h - (position + 34.2) * scale;
+          const invalid = !layout.gaps[index]?.valid || !layout.gaps[index + 1]?.valid;
+          put('rect', { x: bx, y: by, width: vertical ? b : w - 2 * f, height: vertical ? h - 2 * f : b, fill: invalid ? '#b91c1c' : '#166534' });
+          put('text', { x: vertical ? bx + b / 2 : x + w / 2, y: vertical ? y + h / 2 : by - 5, 'text-anchor': 'middle', fill: '#111', 'font-size': 12 }, String(index + 1));
+        });
+        put('text', { x: 220, y: 20, 'text-anchor': 'middle', fill: '#3f3f46', 'font-size': 12 }, stabiNumber(layout.widthMm) + ' × ' + stabiNumber(layout.heightMm) + ' mm');
+        put('text', { x: 220, y: 37, 'text-anchor': 'middle', fill: '#3f3f46', 'font-size': 11 }, vertical ? 'Linksaußenkante → Stabi-Linkskante / rechts entsprechend' : 'Unterkante → Unterkante / Oberkante → Oberkante');
+        const p = layout.positions[selected.index];
+        if (Number.isFinite(p)) {
+          const from = selected.opposite ? (vertical ? x + w : y) : (vertical ? x : y + h);
+          const to = vertical ? x + (p + (selected.opposite ? 34.2 : 0)) * scale : y + h - (p + (selected.opposite ? 34.2 : 0)) * scale;
+          const line = vertical ? y + h + 24 : x - 24;
+          const common = { stroke: '#0a5bd3', 'stroke-width': 1.5 };
+          put('line', Object.assign(vertical ? { x1: from, x2: to, y1: line, y2: line } : { x1: line, x2: line, y1: from, y2: to }, common));
+          [from, to].forEach(v => put('line', Object.assign(vertical ? { x1: v, x2: v, y1: line - 5, y2: line + 5 } : { x1: line - 5, x2: line + 5, y1: v, y2: v }, common)));
+          put('line', Object.assign(vertical ? { x1: to, x2: to, y1: y + h, y2: line + 5 } : { x1: line - 5, x2: x + w, y1: to, y2: to }, common, { 'stroke-dasharray': '3 3' }));
+          put('text', { x: 220, y: 326, 'text-anchor': 'middle', fill: '#0a5bd3', 'font-size': 12 }, 'Stabi ' + (selected.index + 1) + ': ' + stabiNumber(selected.opposite ? layout.oppositePositions[selected.index] : p) + ' mm ' + (vertical ? (selected.opposite ? 'von rechts' : 'von links') : (selected.opposite ? 'von oben' : 'von unten')));
+        }
+        target.appendChild(svg);
+      }
+
+      function updateStabiPlanner(itemEl) {
+        const details = stabiDetails(itemEl);
+        const visible = isInsectType(itemEl.querySelector('[data-field="type"]')?.value) && ['Spannrahmen', 'Tür'].includes(details.insectSubtype);
+        const planner = itemEl.querySelector('[data-block="stabiPlanner"]');
+        planner.classList.toggle('hidden', !visible);
+        if (!visible) return;
+        // Moving the planner detaches focused inputs, even within the same parent.
+        if (details.insectSubtype === 'Spannrahmen') {
+          const anchor = itemEl.querySelector('[data-block="stabiAnchor"]');
+          if (anchor.nextElementSibling !== planner) anchor.after(planner);
+        } else {
+          const door = itemEl.querySelector('[data-block="insectDoor"]');
+          if (planner.parentElement !== door) door.appendChild(planner);
+        }
+        const state = itemEl._stabiState || (itemEl._stabiState = { orientation: 'horizontal', manual: false });
+        const dims = window.Stabilization.getFrameDimensions(details);
+        if (!state.orientationExplicit && !state.manual) state.orientation = dims.widthMm > dims.heightMm ? 'vertical' : 'horizontal';
+        const input = Object.assign({}, dims, { orientation: state.orientation });
+        if (state.manual) { input.count = state.count; input.positions = state.positions; }
+        const layout = window.Stabilization.calculateLayout(input);
+        itemEl._stabiLayout = layout;
+        if (!state.manual) { state.count = layout.count; state.positions = layout.positions.slice(); }
+        planner.querySelector('[data-field="stabiOrientation"]').value = state.orientation;
+        const countEl = planner.querySelector('[data-field="stabiCount"]');
+        if (document.activeElement !== countEl) countEl.value = state.count;
+        countEl.setAttribute('aria-invalid', String(!Number.isInteger(state.count) || state.count < layout.minimumCount || state.count > layout.maximumCount));
+        const vertical = state.orientation === 'vertical';
+        planner.querySelector('[data-block="stabiMeasurements"]').textContent = 'Fertigmaß: ' + stabiNumber(dims.widthMm) + ' × ' + stabiNumber(dims.heightMm) + ' mm · Mindestanzahl: ' + layout.minimumCount;
+        const rows = planner.querySelector('[data-block="stabiRows"]');
+        const rowKey = state.orientation + ':' + layout.positions.length;
+        if (rows.dataset.key !== rowKey) {
+          rows.replaceChildren();
+          rows.dataset.key = rowKey;
+          layout.positions.forEach((position, index) => {
+            const row = document.createElement('div');
+            row.className = 'stabi-row';
+            const number = document.createElement('strong');
+            number.textContent = String(index + 1);
+            row.appendChild(number);
+            [false, true].forEach(opposite => {
+              const label = document.createElement('label');
+              label.textContent = vertical ? (opposite ? 'Rechtskante → Rechtskante (mm)' : 'Linkskante → Linkskante (mm)') : (opposite ? 'Oberkante → Oberkante (mm)' : 'Unterkante → Unterkante (mm)');
+              const field = document.createElement('input');
+              field.type = 'number'; field.step = '0.1'; field.min = '0';
+              field.dataset.stabiIndex = String(index); field.dataset.opposite = String(opposite);
+              field.setAttribute('aria-label', 'Stabi ' + (index + 1) + ', ' + label.textContent);
+              field.addEventListener('focus', () => { itemEl._stabiSelected = { index, opposite }; renderStabiSketch(itemEl, itemEl._stabiLayout); });
+              field.addEventListener('input', () => {
+                const current = itemEl._stabiState;
+                current.manual = true;
+                const value = field.value === '' ? NaN : Number(field.value);
+                current.positions[index] = opposite ? window.Stabilization.oppositeOffset(itemEl._stabiLayout.axisMm, value) : value;
+                updateStabiPlanner(itemEl);
+              });
+              label.appendChild(field); row.appendChild(label);
+            });
+            rows.appendChild(row);
+          });
+        }
+        rows.querySelectorAll('input').forEach(field => {
+          const index = Number(field.dataset.stabiIndex);
+          const value = field.dataset.opposite === 'true' ? layout.oppositePositions[index] : layout.positions[index];
+          if (document.activeElement !== field) field.value = Number.isFinite(value) ? window.Stabilization.round1(value) : '';
+          field.setAttribute('aria-invalid', String(!Number.isFinite(value) || !layout.gaps[index]?.valid || !layout.gaps[index + 1]?.valid));
+        });
+        const gaps = planner.querySelector('[data-block="stabiGaps"]');
+        gaps.replaceChildren();
+        layout.gaps.forEach((gap, index) => {
+          const el = document.createElement('span');
+          el.className = gap.valid ? 'valid' : 'invalid';
+          el.textContent = (index === 0 ? 'Rahmen → ' : String(index) + ' → ') + (index === layout.count ? 'Rahmen' : String(index + 1)) + ': ' + stabiNumber(gap.mm) + ' mm';
+          gaps.appendChild(el);
+        });
+        planner.querySelector('[data-block="stabiErrors"]').textContent = layout.errors.join(' ');
+        renderStabiSketch(itemEl, layout);
       }
 
       function applyInsectLogic(itemEl, sourceField) {
@@ -1533,6 +1741,7 @@ function pageHtml() {
         }
 
         applySpannrahmenChoiceLock(itemEl, sourceField);
+        updateStabiPlanner(itemEl);
       }
 
       function addItem(cloneFromEl) {
@@ -1585,6 +1794,9 @@ function pageHtml() {
             Array.from(itemsEl.children).forEach(updateItemTitle);
           } else if (action === 'duplicate') {
             addItem(node);
+          } else if (action === 'stabiAuto') {
+            node._stabiState = { orientation: node._stabiState?.orientation || 'horizontal', orientationExplicit: !!node._stabiState?.orientationExplicit, manual: false };
+            updateStabiPlanner(node);
           }
         });
 
@@ -1592,6 +1804,7 @@ function pageHtml() {
           updatePanzerVisibility(node);
           updateTypeDependentVisibility(node);
         });
+        node.querySelector('[data-field="dimensions"]').addEventListener('input', () => updatePanzerAreaWarning(node));
         node.querySelector('[data-field="insectSubtype"]').addEventListener('change', () => {
           updateTypeDependentVisibility(node);
         });
@@ -1607,15 +1820,26 @@ function pageHtml() {
         node.querySelector('[data-field="doorKind"]').addEventListener('change', () => {
           updateTypeDependentVisibility(node);
         });
-        node.querySelector('[data-field="endleisteEnabled"]').addEventListener('change', () => {
-          applyPanzerLogic(node);
+        ['insectWidthMm', 'insectHeightMm'].forEach(key => node.querySelector('[data-field="' + key + '"]').addEventListener('input', () => updateStabiPlanner(node)));
+        node.querySelector('[data-field="stabiOrientation"]').addEventListener('change', e => {
+          node._stabiState = { orientation: e.target.value, orientationExplicit: true, manual: false };
+          node._stabiSelected = { index: 0, opposite: false };
+          updateStabiPlanner(node);
+        });
+        node.querySelector('[data-field="stabiCount"]').addEventListener('input', e => {
+          const state = node._stabiState;
+          const count = e.target.value === '' ? NaN : Number(e.target.value);
+          const layout = window.Stabilization.calculateLayout(Object.assign({}, window.Stabilization.getFrameDimensions(stabiDetails(node)), { orientation: state.orientation, count }));
+          state.positions = state.manual ? resizeStabiPositions(state.positions, count, layout.axisMm) : layout.positions.slice();
+          state.manual = true; state.count = count;
+          updateStabiPlanner(node);
         });
 
         const rerunVorsatzLogic = () => applyVorsatzElementLogic(node, { keepBoxSize: true });
         const vorsatzFields = [
           'vorsatzElementDimensions', 'vorsatzBoxColorId', 'vorsatzBoxSizeMm', 'vorsatzShaftId',
           'vorsatzPanzerProfileId', 'vorsatzPanzerColorId',
-          'vorsatzEndleisteEnabled', 'vorsatzEndleisteHoles', 'vorsatzEndleisteColorId',
+          'vorsatzEndleisteHoles', 'vorsatzEndleisteColorId',
           'vorsatzRollSide', 'vorsatzRailLengthMm',
           'vorsatzStrapSize', 'vorsatzStrapExit', 'vorsatzMotorExit', 'vorsatzOperatingSide'
         ];
@@ -1625,10 +1849,6 @@ function pageHtml() {
           const ev = (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) ? 'change' :
             (el.tagName === 'SELECT' ? 'change' : 'input');
           el.addEventListener(ev, rerunVorsatzLogic);
-        });
-        node.querySelectorAll('input[data-field="vorsatzElementRails"]').forEach(r => {
-          r.name = 'vorsatzElementRails_' + uid;
-          r.addEventListener('change', rerunVorsatzLogic);
         });
         node.querySelectorAll('input[data-field="vorsatzControl"]').forEach((r, idx) => {
           r.name = 'vorsatzControl_' + uid;
@@ -1671,6 +1891,7 @@ function pageHtml() {
         });
 
         if (cloneFromEl) {
+          if (cloneFromEl._stabiState) node._stabiState = Object.assign({}, cloneFromEl._stabiState, { positions: cloneFromEl._stabiState.positions.slice() });
           Array.from(cloneFromEl.querySelectorAll('[data-field]')).forEach(src => {
             const key = src.getAttribute('data-field');
             const dst = node.querySelector('[data-field="' + key + '"]');
@@ -1704,10 +1925,6 @@ function pageHtml() {
           node.querySelectorAll('input[data-field="boxOnlyControl"]').forEach((c) => {
             if (srcBoxOnlyControl && srcBoxOnlyControl.value === c.value) c.dataset.wanted = c.value;
           });
-
-          const srcEndEnabled = cloneFromEl.querySelector('[data-field="endleisteEnabled"]');
-          const dstEndEnabled = node.querySelector('[data-field="endleisteEnabled"]');
-          if (srcEndEnabled && dstEndEnabled) dstEndEnabled.checked = !!srcEndEnabled.checked;
 
           const srcEndHoles = cloneFromEl.querySelector('[data-field="endleisteHoles"]');
           const dstEndHoles = node.querySelector('[data-field="endleisteHoles"]');
@@ -1754,10 +1971,6 @@ function pageHtml() {
 
           const srcVRailLength = normalize(cloneFromEl.querySelector('[data-field="vorsatzRailLengthMm"]')?.value);
           if (srcVRailLength) node.querySelector('[data-field="vorsatzRailLengthMm"]').dataset.wanted = srcVRailLength;
-
-          const srcVElementRails = cloneFromEl.querySelector('input[data-field="vorsatzElementRails"]:checked');
-          const dstVElementRails = srcVElementRails ? node.querySelector('input[data-field="vorsatzElementRails"][value="' + srcVElementRails.value + '"]') : null;
-          if (dstVElementRails) dstVElementRails.checked = true;
 
           const srcBoxOnlyBoxWidth = normalize(cloneFromEl.querySelector('[data-field="boxOnlyBoxWidthMm"]')?.value);
           if (srcBoxOnlyBoxWidth) node.querySelector('[data-field="boxOnlyBoxWidthMm"]').dataset.wanted = srcBoxOnlyBoxWidth;
@@ -2209,15 +2422,15 @@ function pageHtml() {
               const haken = normalize(itemEl.querySelector('[data-field="spannHakenLengthMm"]')?.value);
               const brushPosition = normalize(itemEl.querySelector('[data-field="spannBrushPosition"]')?.value);
               const brushLength = normalize(itemEl.querySelector('[data-field="spannBrushLengthMm"]')?.value);
-              const stabilizationMode = normalize(itemEl.querySelector('[data-field="spannStabilizationMode"]')?.value);
               const notes = normalize(itemEl.querySelector('[data-field="spannNotes"]')?.value);
               if (position) details.spannPosition = position;
               if (feder) details.spannFederstifte = feder;
               if (haken) details.spannHakenLengthMm = haken;
               else if (normalize(feder).toLowerCase() !== 'ja') details.spannHakenLengthMm = '4';
+              const hakenVariant = normalize(itemEl.querySelector('[data-field="spannHakenVariant"]')?.value);
+              if (normalize(feder).toLowerCase() !== 'ja' && ['Kurz', 'Lang'].includes(hakenVariant)) details.spannHakenVariant = hakenVariant;
               if (brushPosition) details.spannBrushPosition = brushPosition;
               if (brushLength) details.spannBrushLengthMm = brushLength;
-              if (stabilizationMode) details.spannStabilizationMode = stabilizationMode;
               if (notes) details.spannNotes = notes;
             } else if (insectSubtype === 'Rollo') {
               const cassette = normalize(itemEl.querySelector('[data-field="rolloCassette"]')?.value);
@@ -2235,7 +2448,7 @@ function pageHtml() {
             } else if (insectSubtype === 'Tür') {
               const kind = normalize(itemEl.querySelector('[data-field="doorKind"]')?.value);
               const kick = normalize(itemEl.querySelector('[data-field="doorKickplate"]')?.value);
-              const pet = normalize(itemEl.querySelector('[data-field="doorPetFlap"]')?.value);
+              const pet = kind === 'Schiebetür' ? 'keine' : normalize(itemEl.querySelector('[data-field="doorPetFlap"]')?.value);
               const wings = normalize(itemEl.querySelector('[data-field="doorWingCount"]')?.value);
               const railTop = normalize(itemEl.querySelector('[data-field="doorRailTopMm"]')?.value);
               const railBottom = normalize(itemEl.querySelector('[data-field="doorRailBottomMm"]')?.value);
@@ -2266,10 +2479,9 @@ function pageHtml() {
 
             const dimensions = normalize(itemEl.querySelector('[data-field="dimensions"]').value);
 
-            const endleisteEnabled = !!itemEl.querySelector('[data-field="endleisteEnabled"]').checked;
             const endleisteHoles = !!itemEl.querySelector('[data-field="endleisteHoles"]').checked;
             const endleisteColorId = normalize(itemEl.querySelector('[data-field="endleisteColorId"]').value) || 'silber_eloxiert';
-            const endleisteColorLabel = (ENDLEISTE_COLORS.find(c => c.id === endleisteColorId) || {}).label || '';
+            const endleisteColorLabel = (PANZER_ENDLEISTE_COLORS.find(c => c.id === endleisteColorId) || {}).label || '';
 
             details.material = material;
             details.profile = profileCode;
@@ -2277,7 +2489,6 @@ function pageHtml() {
             details.colorId = colorId;
             details.colorLabel = colorLabel;
             details.dimensions = dimensions;
-            details.endleisteEnabled = endleisteEnabled;
             details.endleisteHoles = endleisteHoles;
             details.endleisteColorId = endleisteColorId;
             details.endleisteColorLabel = endleisteColorLabel;
@@ -2293,7 +2504,7 @@ function pageHtml() {
             const shaftId = normalize(itemEl.querySelector('[data-field="vorsatzShaftId"]').value);
             const shaftLabel = (VORSATZ_SHAFT_OPTIONS.find(s => s.id === shaftId) || {}).label || '';
 
-            const rails = normalize(getSelectedRadioValue(itemEl, 'vorsatzElementRails')) || 'nein';
+            const rails = 'ja';
             const railLengthMmRaw = normalize(itemEl.querySelector('[data-field="vorsatzRailLengthMm"]')?.value);
             const railLengthMm = Number(railLengthMmRaw) || null;
 
@@ -2337,7 +2548,6 @@ function pageHtml() {
             const panzerProfileLabel = (VORSATZ_ROLLO_PROFILES.find(p => p.id === panzerProfileId) || {}).label || '';
             const panzerColorId = normalize(itemEl.querySelector('[data-field="vorsatzPanzerColorId"]').value);
             const panzerColorLabel = (VORSATZ_COLORS.find(c => c.id === panzerColorId) || {}).label || '';
-            const endleisteEnabled = !!itemEl.querySelector('[data-field="vorsatzEndleisteEnabled"]').checked;
             const endleisteHoles = !!itemEl.querySelector('[data-field="vorsatzEndleisteHoles"]').checked;
             const endleisteColorId = normalize(itemEl.querySelector('[data-field="vorsatzEndleisteColorId"]').value) || 'silber_eloxiert';
             const endleisteColorLabel = (ENDLEISTE_COLORS.find(c => c.id === endleisteColorId) || {}).label || '';
@@ -2354,7 +2564,6 @@ function pageHtml() {
             details.vorsatzPanzerProfileLabel = panzerProfileLabel;
             details.vorsatzPanzerColorId = panzerColorId;
             details.vorsatzPanzerColorLabel = panzerColorLabel;
-            details.vorsatzPanzerEndleisteEnabled = endleisteEnabled;
             details.vorsatzPanzerEndleisteHoles = endleisteHoles;
             details.vorsatzPanzerEndleisteColorId = endleisteColorId;
             details.vorsatzPanzerEndleisteColorLabel = endleisteColorLabel;
@@ -2405,6 +2614,11 @@ function pageHtml() {
             details.vorsatzBoxOnlyMotorExitLabel = motorExitLabel;
           }
 
+          if (isInsectType(type) && ['Spannrahmen', 'Tür'].includes(insectSubtype)) {
+            updateStabiPlanner(itemEl);
+            const state = itemEl._stabiState;
+            details.stabilization = { version: 1, orientation: state.orientation, count: state.count, positions: state.positions.slice() };
+          }
           payload.items.push({ type, details });
         });
 
@@ -2460,6 +2674,15 @@ function pageHtml() {
         clearStatus();
         const payload = collectPayload();
 
+        if (currentMode() !== 'question') {
+          const invalid = Array.from(itemsEl.children).find(item => !item.querySelector('[data-block="stabiPlanner"]').classList.contains('hidden') && !item._stabiLayout?.valid);
+          if (invalid) {
+            setStatus('err', 'Stabilisierungsprofile: ' + invalid._stabiLayout.errors.join(' '));
+            invalid.querySelector('[data-block="stabiPlanner"]').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
+        }
+
         const mode = currentMode();
         if (mode === 'question') {
           if (!payload.assignee) {
@@ -2510,7 +2733,10 @@ function pageHtml() {
           const url = mode === 'question' ? '/api/intake/question' : '/api/intake/order';
           const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
             credentials: 'include',
             body: JSON.stringify(payload)
           });

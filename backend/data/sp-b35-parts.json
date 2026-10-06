@@ -1,0 +1,101 @@
+{
+  "model": "SP-B 35",
+  "source": "Alukon Anleitung (Screenshots)",
+  "parts": [
+    { "pos": 1, "name": "SP-B 35 Profil", "articleNo": "3001023FF" },
+    { "pos": 3, "name": "Bürste 4 mm", "articleNo": "300135500" },
+    { "pos": 4, "name": "Gaze", "articleNo": "30013xxx/30023xxx" },
+    { "pos": 5, "name": "PVC Keder Ø5,1 mm", "articleNo": "300135300/300135400" },
+    { "pos": 6, "name": "PVC Keder Ø4,7 mm", "articleNo": "300235300/300235400" },
+    { "pos": 7, "name": "Eckverbinder", "articleNo": "300130500" },
+    { "pos": 8, "name": "Schlitten 1 mm", "articleNo": "300141200" },
+    { "pos": 9, "name": "Haken lang (x-Variante)", "articleNoPattern": "3001420xx" },
+    { "pos": 10, "name": "Stabilisierungsprofil", "articleNo": "3001030FF" },
+    { "pos": 11, "name": "Verbinder für Stabilisierungsprofil", "articleNo": "300130200" },
+    { "pos": 12, "name": "Griffleiste zum Anschrauben", "articleNo": "300138200" },
+    { "pos": 13, "name": "Platte für Mittelarretierung", "articleNo": "300141300" },
+    { "pos": 14, "name": "Haken kurz (x-Variante)", "articleNoPattern": "3001450xx" },
+    { "pos": 15, "name": "Kederschutzprofil", "articleNo": "300135100" },
+    { "pos": 16, "name": "Bürste 8 mm", "articleNo": "300135600" },
+    { "pos": 17, "name": "Zylinderkopfschraube M3x4", "articleNo": "891192600" },
+    { "pos": 18, "name": "Zylinderkopfschraube M3x6", "articleNo": "891192800" },
+    { "pos": 19, "name": "AL-IS Federhakenaufnahme", "articleNo": "300140100" }
+  ],
+  "intakeGuideline": {
+    "preferDropdowns": true,
+    "freeTextOnlyFor": [
+      "Sonderfarbe mit RAL-Angabe",
+      "freie Bemerkungen / Sonderhinweise"
+    ],
+    "futureProductScopes": [
+      "ISS-Drehtüren",
+      "ISS-Schiebetüren",
+      "ISS-Rollos"
+    ]
+  },
+  "rules": {
+    "kederByMesh": {
+      "meshTypes_5_1": ["Standard", "Durchblick", "Pollenschutz"],
+      "meshTypes_4_7": ["Reißfest", "Edelstahl"]
+    },
+    "schlittenCounts": {
+      "standard": 6,
+      "federhaken": 8,
+      "mittelarretierungExtra": 2
+    },
+    "stabilization": {
+      "requiredIfWidthMmGte": 1500,
+      "requiredIfHeightMmGte": 1500,
+      "cutMinusMm": 70
+    },
+    "griffleistePosition": {
+      "ifHeightMmLt": 1000,
+      "pos": "Mitte",
+      "ifHeightMmGt": 1000,
+      "posAlt": "2/5 von unten"
+    },
+    "mittelarretierung": {
+      "requiredIfHeightMmGte": 1300
+    },
+    "kederschutzprofilOptional": {
+      "widthCutMinusMm": 40,
+      "heightCutMinusMm": 71,
+      "extraWidthPiecesIfStabilization": 2,
+      "extraHeightMinusIfStabilizationMm": 10
+    },
+    "packagingInsert": {
+      "zylinderkopfschraubeM3x4": {
+        "articleNo": "891192600",
+        "withoutMiddleLatch": 12,
+        "withMiddleLatch": 10
+      },
+      "zylinderkopfschraubeM3x6": {
+        "articleNo": "891192800",
+        "withoutMiddleLatch": 0,
+        "withMiddleLatch": 4
+      },
+      "hakenLang": {
+        "articleNo": "891193000",
+        "withoutMiddleLatch": 2,
+        "withMiddleLatch": 4
+      },
+      "hakenKurz": {
+        "articleNo": "897151011",
+        "withoutMiddleLatch": 2,
+        "withMiddleLatch": 2
+      },
+      "inbusschluesselSw2": {
+        "articleNo": "891193000",
+        "withoutMiddleLatch": 1,
+        "withMiddleLatch": 1,
+        "includedOnly": true,
+        "needsOrdering": false
+      },
+      "montageanleitung": {
+        "articleNo": "897151012",
+        "withoutMiddleLatch": 1,
+        "withMiddleLatch": 1
+      }
+    }
+  }
+}

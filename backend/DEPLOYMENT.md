@@ -1,9 +1,134 @@
-# Phase 4 Backend Deployment Guide
+<!-- Copyright 2025 HeJo Projects - Alle Rechte beibehalten -->
+# Backend Deployment Guide (Phase 4)
 
-## Prerequisites
-- Neon PostgreSQL account (free tier available)
-- Vercel account (free tier available)
-- GitHub account (for Vercel integration)
+## Update (April 2026): Produktionsmonitor, Scan, Material & Etiketten
+
+Dieses Backend betreibt neben Auth/Shopify-Integrationen auch einen produktionsnahen Slack-Workflow:
+
+- Monitor UI: `/display` (LAN, Desktop + Mobile/Safari)
+- Scan: QR (`rwjob:Rec...`) → Bestätigen → Status-Update in Slack (`/api/production/scan`)
+- Material: erzeugt Material-Bestellungen in `SLACK_MATERIAL_LIST_ID` (`/api/production/material`)
+- Admin-Edit: Titel/Details aus dem Monitor direkt in Slack ändern (`/api/production/edit`, geschützt per `MONITOR_ADMIN_KEY`)
+- Etiketten: Brother DK‑11201 (29×90 mm), Druck aus dem Details-Dialog (`/display/label`)
+
+## Deployment-Variante A (Empfohlen): Windows / LAN Server (Büro)
+
+### Voraussetzungen
+- Windows-PC als Server im Büro (statische IP oder DHCP-Reservierung empfohlen)
+- Slack App/Bot Token mit Zugriff auf Slack Lists (Produktion + Material)
+- Optional: Reverse Proxy + HTTPS (falls Einbettung in Shopify oder Zugriff von außen gewünscht)
+
+### Setup (.env)
+In `backend/.env` konfigurieren:
+
+| Variable | Beispiel | Zweck |
+|---|---|---|
+| `PORT` | `3006` | Server-Port |
+| `HOST` | `0.0.0.0` | Im LAN erreichbar machen |
+| `DISPLAY_BASE_URL` | `https://monitor.rollladenwelt.de/display` | Basis-URL für QR-Links |
+| `SLACK_BOT_TOKEN` | `xoxb-...` | Slack Bot Token |
+| `SLACK_LIST_ID` | `L123...` | Slack List: Produktion |
+| `SLACK_MATERIAL_LIST_ID` | `L456...` | Slack List: Material |
+| `SLACK_MATERIAL_ASSIGNEE` | `U123...` | Standard-Empfänger der Material-Einträge |
+| `SLACK_ACTIVITY_CHANNEL` | `C123...` | Optional: Log/Spiegelung von Aktionen |
+| `SLACK_ORDER_INTAKE_CHANNEL` | `C123...` | Kanal für normale Intake-Nachrichten |
+| `SLACK_EMERGENCY_CHANNEL` | `C123...` | Optional: separater Kanal für Notfall-Alarme; Fallback ist `SLACK_ORDER_INTAKE_CHANNEL` |
+| `SLACK_EMERGENCY_MENTION` | `<!channel>` | Mention für Push-Benachrichtigungen, z.B. `<!channel>`, `<!here>`, `<@U123>` oder `<!subteam^ID>` |
+| `MONITOR_ADMIN_KEY` | `...` | Admin-Key für Bearbeiten im Monitor |
+| `MONITOR_HTTP_USER` | `monitor` | Optional: HTTP Basic Auth Benutzer (Schutz für öffentliches Internet) |
+| `MONITOR_HTTP_PASSWORD` | `...` | Optional: HTTP Basic Auth Passwort (wenn gesetzt, sind `/display` + `/api/production/*` geschützt) |
+| `AUTO_SYNC_MONTAGE_FROM_DUE` | `true` | Optional: wenn Montage leer, Montagetermin aus Fälligkeit nachtragen |
+| `ALLOW_START_WITHOUT_DB` | `true` | Optional: Start auch ohne DB (Monitoring/Slack funktioniert ohne DB) |
+
+### Start / Neustart
+```bash
+cd backend
+npm install
+npm run dev:watch
+```
+
+Aufruf:
+- Monitor: `https://monitor.rollladenwelt.de/display`
+
+### Zugriff aus anderem LAN / Internet (ohne VPN)
+Private IPs (`192.168.x.x`) sind von außen nicht erreichbar. Für den einfachen und sicheren Zugriff von Kolleginnen außerhalb des Büros (ohne IT-Aufwand) nutzen wir einen Cloudflare Tunnel (`cloudflared`) in Kombination mit Basic Authentication.
+
+1. **Vorbereitung (`.env`)**:
+   Stelle sicher, dass `MONITOR_HTTP_USER` und `MONITOR_HTTP_PASSWORD` gesetzt sind, damit die Seite im Internet nicht öffentlich einsehbar ist.
+   
+2. **Tunnel & Server automatisch starten**:
+   Nutze das bereitgestellte PowerShell-Skript:
+   ```powershell
+   cd backend\scripts
+   .\start-tunnel.ps1
+   ```
+   Das Skript prüft, ob der Node-Server läuft (startet ihn ggf.) und richtet den HTTPS-Tunnel ein.
+
+3. **URL weitergeben**:
+   URL ist dauerhaft: `https://monitor.rollladenwelt.de/display`. Der Zugriff erfordert den unter Schritt 1 konfigurierten Benutzernamen und Passwort.
+
+### Intake-Notfall
+- Im Intake gibt es einen `Notfall`-Schalter.
+- Beim Senden erscheint ein Bestätigungsdialog.
+- Zusätzlich zur normalen Intake-Nachricht wird eine separate Slack-Alarmnachricht gesendet.
+- Push-Benachrichtigungen werden über `SLACK_EMERGENCY_MENTION` ausgelöst, typischerweise `<!channel>` oder eine gezielte User-/Usergroup-Mention.
+
+### Autostart (Task Scheduler)
+Empfohlen: Aufgabenplanung → Aufgabe erstellen → „Beim Systemstart“:
+- Programm/Skript: `node`
+- Argumente: `-r dotenv/config src/index.js`
+- Start in: `C:\Projects\Shopify\backend`
+
+### Automatischer Neustart bei Zugriffsfehlern
+Fuer Windows gibt es zwei Hilfsskripte:
+
+- `scripts\restart-backend.ps1`: beendet den Listener auf Port `3006` und startet das Backend neu
+- `scripts\ensure-backend.ps1`: prueft `/health` und startet nur bei Fehlern neu
+- `scripts\ensure-cloudflared.ps1`: prueft die oeffentliche `/health` und startet bei Cloudflare/Tunnel-Problemen den Windows-Service `cloudflared` neu
+- `scripts\install-watchdogs.ps1`: richtet beide Watchdogs in der Windows-Aufgabenplanung ein
+
+Empfohlener Test:
+
+```powershell
+cd C:\Projects\Shopify\backend\scripts
+.\ensure-backend.ps1 -LocalHealthUrl "http://127.0.0.1:3006/health" -PublicHealthUrl "https://monitor.rollladenwelt.de/health"
+```
+
+Cloudflare/Tunnel separat testen:
+
+```powershell
+cd C:\Projects\Shopify\backend\scripts
+.\ensure-cloudflared.ps1 -PublicHealthUrl "https://monitor.rollladenwelt.de/health" -LocalHealthUrl "http://127.0.0.1:3006/health"
+```
+
+Empfohlene Aufgabenplanung (entspricht "Cron" unter Windows):
+
+1. Aufgabenplanung oeffnen
+2. Aufgabe erstellen
+3. Trigger: "Alle 5 Minuten"
+4. Aktion:
+   - Programm/Skript: `powershell.exe`
+   - Argumente:
+     `-ExecutionPolicy Bypass -File "C:\Projects\Shopify\backend\scripts\ensure-backend.ps1" -Port 3006 -LocalHealthUrl "http://127.0.0.1:3006/health" -PublicHealthUrl "https://monitor.rollladenwelt.de/health"`
+5. Option "Aufgabe so schnell wie moeglich nach einem verpassten Start ausfuehren" aktivieren
+
+Hinweise:
+
+- Fuer aktive Entwicklungsarbeit kann die Aufgabe mit `-UseWatch` gestartet werden; fuer stabilen Hintergrundbetrieb ist der Standard ohne Watch robuster.
+- Wenn nur der Cloudflare-Tunnel stoert, hilft ein Backend-Neustart allein moeglicherweise nicht. Dann braucht der Tunnel einen separaten Watchdog (siehe `ensure-cloudflared.ps1` / `install-watchdogs.ps1`).
+
+### Drucker/Etikett
+- Etikett: Brother DK‑11201 (29×90 mm)
+- Auslösen: Details-Dialog → „Etikett“ → Browser-Druckdialog
+
+## Deployment-Variante B (Optional): Vercel + Neon (Auth/Shopify Backend)
+
+Diese Variante betrifft den Auth/Customer-Bereich und ist unabhängig vom Produktionsmonitor.
+
+### Voraussetzungen
+- Neon PostgreSQL account
+- Vercel account
+- GitHub repo (für Vercel Integration)
 
 ## Step 1: Set Up PostgreSQL on Neon
 
@@ -125,3 +250,8 @@ vercel logs https://your-project.vercel.app
 Check Neon metrics:
 - Login to Neon dashboard
 - View query performance and connection stats
+
+## Update 2026-07-23
+- Testmodus fuer die neue Bestandsansicht vorbereitet; Details und Status in WORKLOG_2026-07-23.md.
+- Materialkatalog fuer Panzer, Endleisten, Clips, Ersatzteile und Schnittware erweitert.
+- Aktueller Hinweis: Die Route /display/bestand ist im Quellstand vorhanden, die laufende Browser-Auslieferung war im Test noch nicht konsistent.

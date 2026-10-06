@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Versandlabel Vorlage - Rollladenwelt.de</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  html, body { margin:0; padding:0; font-family:'Segoe UI', Arial, sans-serif; color:#111; background:#fff; }
+  body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+  /* DIN A6 quer = 148 x 105 mm - typisches DHL/Deutsche Post Packstücklabel */
+  /* 2x Label pro Seite: oben 0..148mm, unten 148..297mm */
+  .page { width: 210mm; min-height: 297mm; page-break-after: always; }
+  .label {
+    box-sizing: border-box;
+    width: 100%;
+    height: 148.5mm; /* A6 halbe Höhe */
+    border: 0;
+    padding: 6mm 7mm;
+    position: relative;
+    overflow: hidden;
+  }
+  .label + .label { border-top: 0.3mm dashed #ccc; }
+
+  /* Header = Absender + Sendungsinfo */
+  .row-top { display: flex; justify-content: space-between; align-items: flex-start; }
+
+  .absender { font-size: 10pt; line-height: 1.25; }
+  .absender .logo-txt {
+    font-weight: 800; font-size: 12pt; letter-spacing: .2px; color:#0b6db5;
+    display:flex; align-items:center; gap:6px;
+  }
+  .absender .logo-txt small {
+    color:#f0a520; font-weight:800; font-size:9.5pt; letter-spacing: 0.1px;
+  }
+  .absender .sub { font-size: 7.5pt; color:#444; margin-bottom: 2px;}
+
+  .sender-info { margin-top: 2mm; font-size: 9pt; }
+  .sender-info b { color:#0b6db5; }
+
+  /* Rechte Seite (oben rechts): Tracking + Datum */
+  .tracking-box {
+    min-width: 70mm;
+    border: 0.6mm solid #222;
+    border-radius: 3px;
+    padding: 2.2mm 3mm;
+    text-align: center;
+    background: #fff;
+  }
+  .tracking-box .lbl { font-size: 7.5pt; letter-spacing: .4px; color:#555; text-transform: uppercase;}
+  .tracking-box input, .tracking-box .track-val {
+    display:block; width: 100%; border: none; outline: none;
+    font-family:'Courier New', monospace; font-weight: 700;
+    font-size: 14pt; text-align: center; color:#000; letter-spacing: 1px;
+    padding: 1.2mm 0 0.5mm 0; background: transparent;
+  }
+  .tracking-box .datum { font-size: 8pt; color:#333; padding-top: 1mm; border-top: .2mm dashed #aaa; margin-top: 1mm;}
+
+  /* Trennlinie */
+  .divider {
+    border-top: 0.35mm solid #999;
+    margin: 4mm 0 3.2mm 0;
+  }
+
+  /* Empfänger Box (Riesig) - MIT PUNKTIERTEM RAHMEN */
+  .empf-box {
+    width: 100%;
+    box-sizing: border-box;
+    border: 0.8mm dashed #111;
+    border-radius: 3mm;
+    min-height: 78mm;
+    padding: 3mm 4mm;
+    position: relative;
+  }
+  .empf-box .corner-title {
+    position: absolute; top: -2.2mm; left: 5mm;
+    background: #fff; padding: 0 2mm; font-size: 7.5pt; color: #222;
+    letter-spacing: .6px; text-transform: uppercase; font-weight: 700;
+  }
+
+  /* Einzelne Eingabe-Zeilen im Empfängerblock (ohne Input, nur Label + Linie) */
+  .empf-zeile {
+    display: grid;
+    grid-template-columns: 30mm 1fr;
+    align-items: end;
+    margin: 2.2mm 0;
+  }
+  .empf-zeile .lab {
+    font-size: 8.5pt;
+    color:#333;
+    font-weight: 600;
+  }
+  .empf-zeile .linie {
+    border-bottom: 0.4mm solid #333;
+    min-height: 6mm;
+    width: 100%;
+    display:block;
+  }
+  .empf-zeile.firma .linie { border-bottom: 0.5mm solid #111; }
+  .empf-zeile.plzort { grid-template-columns: 30mm 1fr; }
+  .plzort .linie {
+    display: grid; grid-template-columns: 32mm 1fr; gap: 3mm; align-items: end;
+    border-bottom: none;
+  }
+  .plzort .linie span { display:block; border-bottom:0.4mm solid #333; min-height:6mm; }
+
+  /* Inhalts- / Hinweis-Zeile UNTEN im Label */
+  .unter-zeile {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 5mm;
+    margin-top: 3.5mm;
+  }
+  .inhalt, .hinweis {
+    border: 0.3mm solid #888;
+    border-radius: 2mm;
+    padding: 1.6mm 2.4mm;
+    font-size: 8.5pt;
+    position: relative;
+  }
+  .inhalt .tit, .hinweis .tit {
+    position: absolute; top: -2mm; left: 3mm; background:#fff;
+    padding: 0 1.5mm; font-size: 7pt; font-weight: 700; color:#222; letter-spacing: .3px; text-transform: uppercase;
+  }
+  .inhalt .linie-inhalt, .hinweis .linie-hinw {
+    border-bottom: 0.3mm dashed #777;
+    min-height: 4.5mm;
+    margin-top: 1.2mm;
+  }
+
+  /* Frankatur (oben rechts neben Absender? Nein: Standard = POSTFRANKATUR Logo Unten RECHTS im Label Footer) */
+  .footer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 4mm;
+    margin-top: 2.8mm;
+  }
+  .postf {
+    width: 33mm;
+    height: 22mm;
+    border: 0.5mm solid #222;
+    border-radius: 2mm;
+    display: grid; align-content: center; justify-content: center; text-align: center;
+    background: #fff;
+    font-family:'Courier New', monospace;
+  }
+  .postf .p1 { font-size: 12pt; font-weight: 800; letter-spacing: 1px; }
+  .postf .p2 { font-size: 6.5pt; color:#555; letter-spacing: .2px; margin-top: .5mm;}
+  .postf .p3 { font-size: 7pt; color:#444; margin-top: 1mm;}
+
+  .cut-hint {
+    position: absolute; right: 3mm; bottom: 2.5mm;
+    font-size: 7pt; color:#777; letter-spacing: .2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SEITE 1 -->
+<div class="page">
+
+  <!-- LABEL 1 (OBEN) -->
+  <div class="label">
+
+    <div class="row-top">
+      <!-- Absender -->
+      <div class="absender">
+        <div class="logo-txt">
+          Rollladenwelt<span>.<small>de</small></span>
+        </div>
+        <div class="sub">ROLLLADEN · INSEKTENSCHUTZ</div>
+        <div class="sender-info">
+          <b>RollladenWelt</b> - Produkte für den Sonnen- und Insektenschutz<br>
+          Zerpenschleuser Ring 30<br>
+          13439 Berlin<br>
+          Deutschland
+        </div>
+      </div>
+
+      <!-- Tracking / Sendungsnummer -->
+      <div class="tracking-box">
+        <div class="lbl">Sendungsnummer · Tracking</div>
+        <input type="text" placeholder="# 0000 0000 0000" class="track-val" />
+        <div class="datum">Datum: <b id="datum1">14.08.2026</b></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- EMPFÄNGER: LEER MIT PUNKTEN -->
+    <div class="empf-box">
+      <span class="corner-title">Empfänger / Anschrift (Hand-Eintrag)</span>
+
+      <div class="empf-zeile firma">
+        <div class="lab">Firma / Name:</div>
+        <div class="linie"></div>
+      </div>
+
+      <div class="empf-zeile">
+        <div class="lab">Abteilung:</div>
+        <div class="linie"></div>
+      </div>
+
+      <div class="empf-zeile">
+        <div class="lab">Straße · Hausnr.:</div>
+        <div class="linie"></div>
+      </div>
+
+      <div class="empf-zeile plzort">
+        <div class="lab">PLZ · Ort:</div>
+        <div class="linie"><span></span><span></span></div>
+      </div>
+
+      <div class="empf-zeile">
+        <div class="lab">Land:</div>
+        <div class="linie"></div>
+      </div>
+
+    </div>
+
+    <div class="unter-zeile">
+      <div class="inhalt"><span class="tit">Inhalt / Warenangabe</span>
+        <div class="linie-inhalt"></div>
+      </div>
+      <div class="hinweis"><span class="tit">Hinweis</span>
+        <div class="linie-hinw"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="cut-hint">← entlang gestrichelter Linie trennen · DIN A6 quer (148×105)</div>
+      <div class="postf">
+        <div class="p1">FRANKATUR</div>
+        <div class="p2">Deutsche Post / DHL Paket</div>
+        <div class="p3">Briefmarke / Einlieferungsschein</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LABEL 2 (UNTEN) -->
+  <div class="label">
+
+    <div class="row-top">
+      <div class="absender">
+        <div class="logo-txt">Rollladenwelt<span>.<small>de</small></span></div>
+        <div class="sub">ROLLLADEN · INSEKTENSCHUTZ</div>
+        <div class="sender-info">
+          <b>RollladenWelt</b> - Produkte für den Sonnen- und Insektenschutz<br>
+          Zerpenschleuser Ring 30<br>
+          13439 Berlin<br>
+          Deutschland
+        </div>
+      </div>
+
+      <div class="tracking-box">
+        <div class="lbl">Sendungsnummer · Tracking</div>
+        <input type="text" placeholder="# 0000 0000 0000" class="track-val" />
+        <div class="datum">Datum: <b id="datum2">14.08.2026</b></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="empf-box">
+      <span class="corner-title">Empfänger / Anschrift (Hand-Eintrag)</span>
+      <div class="empf-zeile firma">
+        <div class="lab">Firma / Name:</div><div class="linie"></div>
+      </div>
+      <div class="empf-zeile">
+        <div class="lab">Abteilung:</div><div class="linie"></div>
+      </div>
+      <div class="empf-zeile">
+        <div class="lab">Straße · Hausnr.:</div><div class="linie"></div>
+      </div>
+      <div class="empf-zeile plzort">
+        <div class="lab">PLZ · Ort:</div><div class="linie"><span></span><span></span></div>
+      </div>
+      <div class="empf-zeile">
+        <div class="lab">Land:</div><div class="linie"></div>
+      </div>
+    </div>
+
+    <div class="unter-zeile">
+      <div class="inhalt"><span class="tit">Inhalt / Warenangabe</span><div class="linie-inhalt"></div></div>
+      <div class="hinweis"><span class="tit">Hinweis</span><div class="linie-hinw"></div></div>
+    </div>
+
+    <div class="footer">
+      <div class="cut-hint">← entlang gestrichelter Linie trennen · DIN A6 quer (148×105)</div>
+      <div class="postf">
+        <div class="p1">FRANKATUR</div>
+        <div class="p2">Deutsche Post / DHL Paket</div>
+        <div class="p3">Briefmarke / Einlieferungsschein</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const heute = new Date();
+  const dd = String(heute.getDate()).padStart(2,'0');
+  const mm = String(heute.getMonth()+1).padStart(2,'0');
+  const yyyy = heute.getFullYear();
+  const dateStr = `${dd}.${mm}.${yyyy}`;
+  try { document.getElementById('datum1').textContent = dateStr; } catch(e){}
+  try { document.getElementById('datum2').textContent = dateStr; } catch(e){}
+</script>
+
+</body>
+</html>
